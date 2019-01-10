@@ -15,6 +15,25 @@ namespace rir {
 void BC::write(CodeStream& cs) const {
     cs.insert(bc);
     switch (bc) {
+#define V(NESTED, name, name_) case Opcode::name_##_:
+BC_NOARGS(V, _)
+#undef V
+        return;
+
+    case Opcode::record_call_:
+        // Call feedback targets are stored in the code extra pool. We don't
+        // have access to them here, so we can't write a call feedback with
+        // preseeded values.
+        assert(immediate.callFeedback.numTargets == 0 &&
+               "cannot write call feedback targets");
+        cs.insert(immediate.callFeedback);
+        return;
+
+    case Opcode::record_binop_:
+        cs.insert(immediate.binopFeedback[0]);
+        cs.insert(immediate.binopFeedback[1]);
+        return;
+
     case Opcode::push_:
     case Opcode::deopt_:
     case Opcode::ldfun_:

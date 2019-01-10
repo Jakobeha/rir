@@ -878,11 +878,13 @@ class FLI(Identical, 2, Effect::None, EnvAccess::None) {
                               {{PirType::any(), PirType::any()}}, {{a, b}}) {}
 };
 
-// Effect::Any prevents this instruction from being optimized away
-class FLI(Int3, 0, Effect::Any, EnvAccess::None) {
-  public:
-    Int3() : FixedLenInstruction(PirType::voyd()) {}
+#define V(NESTED, name, Name)\
+class FLI(Name, 0, Effect::Any, EnvAccess::None) {\
+  public:\
+    Name() : FixedLenInstruction(PirType::voyd()) {}\
 };
+SIMPLE_INSTRUCTIONS(V, _)
+#undef V
 
 // Effect::Any prevents this instruction from being optimized away
 class FLI(PrintInvocation, 0, Effect::Any, EnvAccess::None) {
@@ -1056,7 +1058,7 @@ class VLIE(Call, Effect::Any, EnvAccess::Leak), public CallInstruction {
         pushArg(fs, NativeType::frameState);
         pushArg(fun, RType::closure);
         for (unsigned i = 0; i < args.size(); ++i)
-            pushArg(args[i], PirType::val());
+            pushArg(args[i], RType::prom);
     }
 
     Closure* tryGetCls() override final {

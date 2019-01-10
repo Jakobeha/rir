@@ -13,6 +13,8 @@
 
 #include "CodeVerifier.h"
 
+#include "simple_instruction_list.h"
+
 #include <stack>
 
 namespace rir {
@@ -240,7 +242,7 @@ bool compileSpecialCall(Context& ctx, SEXP ast, SEXP fun, SEXP args_) {
         else if (fun == symbol::Sub)
             cs << BC::uminus();
         else if (fun == symbol::Not)
-            cs << BC::Not();
+            cs << BC::not_();
         cs.addSrc(ast);
 
         return true;
@@ -774,6 +776,8 @@ bool compileSpecialCall(Context& ctx, SEXP ast, SEXP fun, SEXP args_) {
         cs.addSrc(ast);
         return true;
     }
+SIMPLE_INSTRUCTIONS(V, _)
+#undef V
 
     return false;
 }

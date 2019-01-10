@@ -80,4 +80,4 @@ DECLARE(UseMethod, "UseMethod");
 #undef DECLARE
 } // namespace symbol
 
-} // namespace rjit
+} // namespace rir

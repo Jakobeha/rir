@@ -7,6 +7,8 @@
 #include "CodeVerifier.h"
 #include "R/Symbols.h"
 
+#include "simple_instruction_list.h"
+
 namespace rir {
 
 namespace {
@@ -173,6 +175,8 @@ static Sources hasSources(Opcode bc) {
     case Opcode::int3_:
     case Opcode::printInvocation_:
         return Sources::May;
+SIMPLE_INSTRUCTIONS(V, _)
+#undef V
 
     case Opcode::invalid_:
     case Opcode::num_of: {}
@@ -287,6 +291,10 @@ void CodeVerifier::verifyFunctionLayout(SEXP sexp, ::Context* ctx) {
             if (*cptr == Opcode::promise_) {
                 unsigned* promidx = reinterpret_cast<Immediate*>(cptr + 1);
                 objs.push_back(c->getPromise(*promidx));
+            }
+            if (*cptr == Opcode::ldarg_) {
+                unsigned idx = *reinterpret_cast<Immediate*>(cptr + 1);
+                assert(idx < MAX_ARG_IDX);
             }
             if (*cptr == Opcode::call_implicit_ ||
                 *cptr == Opcode::named_call_implicit_) {

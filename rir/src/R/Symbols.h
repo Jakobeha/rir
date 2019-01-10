@@ -2,6 +2,7 @@
 #define SYMBOLS_H_
 
 #include "r.h"
+#include "symbol_list.h"
 
 namespace rir {
 
@@ -83,6 +84,6 @@ DECLARE(UseMethod, "UseMethod");
 #undef DECLARE
 } // namespace symbol
 
-} // namespace rjit
+} // namespace rir
 
 #endif // SYMBOLS_H_
