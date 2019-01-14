@@ -116,12 +116,20 @@ RIR_INLINE SEXP getSrcForCall(Code* c, Opcode* pc, Context* ctx) {
 #define INSTRUCTION(name)                                                      \
     op_##name: /* debug(c, pc, #name, ostack_length(ctx) - bp, ctx); */
 #define NEXT()                                                                 \
-    (__extension__({ goto* opAddr[static_cast<uint8_t>(advanceOpcode())]; }))
+    (__extension__({                                                           \
+        if (interrupt) {                                                       \
+            goto eval_done;                                                    \
+        }                                                                      \
+        goto* opAddr[static_cast<uint8_t>(advanceOpcode())];                   \
+    }))
 #define LASTOP                                                                 \
     {}
 #else
 #define BEGIN_MACHINE                                                          \
     loop:                                                                      \
+    if (interrupt) {                                                           \
+        goto eval_done;                                                        \
+    }                                                                          \
     switch (advanceOpcode())
 #define INSTRUCTION(name)                                                      \
     case Opcode::name:                                                         \
@@ -1124,6 +1132,16 @@ static void cachedSetVar(SEXP val, SEXP env, Immediate idx, Context* ctx,
     UNPROTECT(1);
 }
 
+void startCheckInterrupt(void (*)(int signal) handler) {
+    struct sigaction sigIntHandler;
+
+    sigIntHandler.sa_handler = handler;
+    sigemptyset(&sigIntHandler.sa_mask);
+    sigIntHandler.sa_flags = 0;
+
+    sigaction(SIGINT, &sigIntHandler, NULL);
+}
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wcast-align"
 
@@ -1173,6 +1191,11 @@ SEXP evalRirCode(Code* c, Context* ctx, SEXP* env, const CallContext* callCtxt,
         assert(*env);
         return *env;
     };
+
+    bool interrupt = false;
+    void interruptHandler(int signal) { interrupt = true; }
+
+    startCheckInterrupt(handler);
 
     // main loop
     BEGIN_MACHINE {
