@@ -1033,6 +1033,21 @@ static R_INLINE int RInteger_times(int x, int y, Rboolean* pnaflag) {
         }                                                                      \
     } while (false)
 
+#define DO_BINOP_INT(Op2)                                                      \
+    do {                                                                       \
+        Rboolean naflag = FALSE;                                               \
+        int res = Op2(lhs, rhs, &naflag);                                      \
+        CHECK_INTEGER_OVERFLOW(naflag);                                        \
+        ostackPushInt(ctx, res);                                               \
+    } while (false)
+
+#define DO_BINOP_REAL(op)                                                      \
+    do {                                                                       \
+        double res =                                                           \
+            (lhs == NA_REAL || rhs == NA_REAL) ? NA_REAL : lhs op rhs;         \
+        ostackPushReal(ctx, res);                                              \
+    } while (false)
+
 static double myfloor(double x1, double x2) {
     double q = x1 / x2, tmp;
 
@@ -1128,6 +1143,20 @@ static R_INLINE int RInteger_uminus(int x, Rboolean* pnaflag) {
         }                                                                      \
     } while (false)
 
+#define DO_UNOP_INT(Op2)                                                       \
+    do {                                                                       \
+        Rboolean naflag = FALSE;                                               \
+        int res = Op2(val, &naflag);                                           \
+        CHECK_INTEGER_OVERFLOW(naflag);                                        \
+        ostackPushInt(ctx, res);                                               \
+    } while (false)
+
+#define DO_UNOP_REAL(op)                                                       \
+    do {                                                                       \
+        double res = (val == NA_REAL) ? NA_REAL : op val;                      \
+        ostackPushReal(ctx, res);                                              \
+    } while (false)
+
 #define DO_RELOP(op)                                                           \
     do {                                                                       \
         if (stackObjIsSimpleScalar(lhs, LGLSXP)) {                             \
@@ -1186,6 +1215,12 @@ static R_INLINE int RInteger_uminus(int x, Rboolean* pnaflag) {
         BINOP_FALLBACK(#op);                                                   \
     } while (false)
 
+#define DO_RELOP_LOGICAL(op)                                                   \
+    do {                                                                       \
+        int res = (lhs == NA_LOGICAL || rhs == NA_LOGICAL) ? NA_LOGICAL        \
+                                                           : lhs op rhs;       \
+        ostackPushLogical(ctx, res);                                           \
+    } while (false)
 static SEXP seq_int(int n1, int n2) {
     int n = n1 <= n2 ? n2 - n1 + 1 : n1 - n2 + 1;
     SEXP ans = Rf_allocVector(INTSXP, n);
@@ -2184,18 +2219,53 @@ R_bcstack_t evalRirCode(Code* c, InterpreterInstance* ctx, SEXP env,
             NEXT();
         }
 
-        INSTRUCTION(add_) {
-            R_bcstack_t lhs = ostackAt(ctx, 1);
-            R_bcstack_t rhs = ostackAt(ctx, 0);
-            DO_BINOP(+, RInteger_plus);
-            NEXT();
-        }
+#define INSTR_NATIVE_NUM_BIN(name, op, Op2)                                    \
+    INSTRUCTION(name) {                                                        \
+        R_bcstack_t lhs = ostackAt(ctx, 1);                                    \
+        R_bcstack_t rhs = ostackAt(ctx, 0);                                    \
+        DO_BINOP(op, Op2);                                                     \
+        NEXT();                                                                \
+    }                                                                          \
+                                                                               \
+    INSTRUCTION(name##int_) {                                                  \
+        int rhs = ostackPopInt(ctx);                                           \
+        int lhs = ostackPopInt(ctx);                                           \
+        DO_BINOP_INT(Op2);                                                     \
+        NEXT();                                                                \
+    }                                                                          \
+                                                                               \
+    INSTRUCTION(name##real_) {                                                 \
+        double rhs = ostackPopReal(ctx);                                       \
+        double lhs = ostackPopReal(ctx);                                       \
+        DO_BINOP_REAL(op);                                                     \
+        NEXT();                                                                \
+    }
 
-        INSTRUCTION(uplus_) {
-            R_bcstack_t val = ostackAt(ctx, 0);
-            DO_UNOP(+, RInteger_uplus);
-            NEXT();
-        }
+        INSTR_NATIVE_NUM_BIN(add_, +, RInteger_plus);
+        INSTR_NATIVE_NUM_BIN(sub_, -, RInteger_minus);
+        INSTR_NATIVE_NUM_BIN(mul_, *, RInteger_times);
+
+#define INSTR_NATIVE_UNARY(name, op, Op2)                                      \
+    INSTRUCTION(name) {                                                        \
+        R_bcstack_t val = ostackAt(ctx, 0);                                    \
+        DO_UNOP(op, Op2);                                                      \
+        NEXT();                                                                \
+    }                                                                          \
+                                                                               \
+    INSTRUCTION(name##int_) {                                                  \
+        int val = ostackPopInt(ctx);                                           \
+        DO_UNOP_INT(Op2);                                                      \
+        NEXT();                                                                \
+    }                                                                          \
+                                                                               \
+    INSTRUCTION(name##real_) {                                                 \
+        double val = ostackPopReal(ctx);                                       \
+        DO_UNOP_REAL(op);                                                      \
+        NEXT();                                                                \
+    }
+
+        INSTR_NATIVE_UNARY(uplus_, +, RInteger_uplus);
+        INSTR_NATIVE_UNARY(uminus_, -, RInteger_uminus);
 
         INSTRUCTION(inc_) {
             R_bcstack_t val = ostackPop(ctx);
@@ -2220,23 +2290,10 @@ R_bcstack_t evalRirCode(Code* c, InterpreterInstance* ctx, SEXP env,
             NEXT();
         }
 
-        INSTRUCTION(sub_) {
-            R_bcstack_t lhs = ostackAt(ctx, 1);
-            R_bcstack_t rhs = ostackAt(ctx, 0);
-            DO_BINOP(-, RInteger_minus);
-            NEXT();
-        }
-
-        INSTRUCTION(uminus_) {
-            R_bcstack_t val = ostackAt(ctx, 0);
-            DO_UNOP(-, RInteger_uminus);
-            NEXT();
-        }
-
-        INSTRUCTION(mul_) {
-            R_bcstack_t lhs = ostackAt(ctx, 1);
-            R_bcstack_t rhs = ostackAt(ctx, 0);
-            DO_BINOP(*, RInteger_times);
+        INSTRUCTION(inc_int_) {
+            int val = ostackPopInt(ctx);
+            val++;
+            ostackPushInt(ctx, val);
             NEXT();
         }
 
@@ -2267,6 +2324,32 @@ R_bcstack_t evalRirCode(Code* c, InterpreterInstance* ctx, SEXP env,
             NEXT();
         }
 
+        INSTRUCTION(div_int_) {
+            int rhs = ostackPopInt(ctx);
+            int lhs = ostackPopInt(ctx);
+            double res;
+            if (lhs == NA_INTEGER || rhs == NA_INTEGER) {
+                res = NA_REAL;
+            } else {
+                res = (double)lhs / (double)rhs;
+            }
+            ostackPushReal(ctx, res);
+            NEXT();
+        }
+
+        INSTRUCTION(div_real_) {
+            double rhs = ostackPopReal(ctx);
+            double lhs = ostackPopReal(ctx);
+            double res;
+            if (lhs == NA_REAL || rhs == NA_REAL) {
+                res = NA_REAL;
+            } else {
+                res = lhs / rhs;
+            }
+            ostackPushReal(ctx, res);
+            NEXT();
+        }
+
         INSTRUCTION(idiv_) {
             R_bcstack_t lhs = ostackAt(ctx, 1);
             R_bcstack_t rhs = ostackAt(ctx, 0);
@@ -2284,13 +2367,39 @@ R_bcstack_t evalRirCode(Code* c, InterpreterInstance* ctx, SEXP env,
                 int r = tryStackObjToInteger(rhs);
                 int int_res;
                 if (l == NA_INTEGER || r == NA_INTEGER)
-                    int_res = NA_REAL;
+                    int_res = NA_INTEGER;
                 else
                     int_res = (int)floor((double)l / (double)r);
                 STORE_BINOP_FAST(int_res, true, true, Int, INTEGER);
             } else {
                 BINOP_FALLBACK("%/%");
             }
+            NEXT();
+        }
+
+        INSTRUCTION(idiv_int_) {
+            int rhs = ostackPopInt(ctx);
+            int lhs = ostackPopInt(ctx);
+            int res;
+            if (lhs == NA_INTEGER || rhs == NA_INTEGER) {
+                res = NA_INTEGER;
+            } else {
+                res = (int)floor((double)lhs / (double)rhs);
+            }
+            ostackPushInt(ctx, res);
+            NEXT();
+        }
+
+        INSTRUCTION(idiv_real_) {
+            double rhs = ostackPopReal(ctx);
+            double lhs = ostackPopReal(ctx);
+            double res;
+            if (lhs == NA_REAL || rhs == NA_REAL) {
+                res = NA_REAL;
+            } else {
+                res = myfloor(lhs, rhs);
+            }
+            ostackPushReal(ctx, res);
             NEXT();
         }
 
@@ -2322,6 +2431,29 @@ R_bcstack_t evalRirCode(Code* c, InterpreterInstance* ctx, SEXP env,
             NEXT();
         }
 
+        INSTRUCTION(mod_int_) {
+            int rhs = ostackPopInt(ctx);
+            int lhs = ostackPopInt(ctx);
+            int res;
+            if (lhs == NA_INTEGER || rhs == NA_INTEGER || rhs == 0) {
+                res = NA_INTEGER;
+            } else {
+                res = (lhs >= 0 && rhs > 0)
+                          ? lhs % rhs
+                          : (int)myfmod((double)lhs, (double)rhs);
+            }
+            ostackPushInt(ctx, res);
+            NEXT();
+        }
+
+        INSTRUCTION(mod_real_) {
+            double rhs = ostackPopReal(ctx);
+            double lhs = ostackPopReal(ctx);
+            double res = myfmod(lhs, rhs);
+            ostackPushReal(ctx, res);
+            NEXT();
+        }
+
         INSTRUCTION(pow_) {
             R_bcstack_t lhs = ostackAt(ctx, 1);
             R_bcstack_t rhs = ostackAt(ctx, 0);
@@ -2329,40 +2461,27 @@ R_bcstack_t evalRirCode(Code* c, InterpreterInstance* ctx, SEXP env,
             NEXT();
         }
 
-        INSTRUCTION(lt_) {
-            R_bcstack_t lhs = ostackAt(ctx, 1);
-            R_bcstack_t rhs = ostackAt(ctx, 0);
-            DO_RELOP(<);
-            NEXT();
-        }
+#define INSTR_NATIVE_LGL_BIN(name, op)                                         \
+    INSTRUCTION(name) {                                                        \
+        R_bcstack_t lhs = ostackAt(ctx, 1);                                    \
+        R_bcstack_t rhs = ostackAt(ctx, 0);                                    \
+        DO_RELOP(op);                                                          \
+        NEXT();                                                                \
+    }                                                                          \
+                                                                               \
+    INSTRUCTION(name##lgl_) {                                                  \
+        int lhs = ostackPopLogical(ctx);                                       \
+        int rhs = ostackPopLogical(ctx);                                       \
+        DO_RELOP_LOGICAL(op);                                                  \
+        NEXT();                                                                \
+    }
 
-        INSTRUCTION(gt_) {
-            R_bcstack_t lhs = ostackAt(ctx, 1);
-            R_bcstack_t rhs = ostackAt(ctx, 0);
-            DO_RELOP(>);
-            NEXT();
-        }
-
-        INSTRUCTION(le_) {
-            R_bcstack_t lhs = ostackAt(ctx, 1);
-            R_bcstack_t rhs = ostackAt(ctx, 0);
-            DO_RELOP(<=);
-            NEXT();
-        }
-
-        INSTRUCTION(ge_) {
-            R_bcstack_t lhs = ostackAt(ctx, 1);
-            R_bcstack_t rhs = ostackAt(ctx, 0);
-            DO_RELOP(>=);
-            NEXT();
-        }
-
-        INSTRUCTION(eq_) {
-            R_bcstack_t lhs = ostackAt(ctx, 1);
-            R_bcstack_t rhs = ostackAt(ctx, 0);
-            DO_RELOP(==);
-            NEXT();
-        }
+        INSTR_NATIVE_LGL_BIN(lt_, <);
+        INSTR_NATIVE_LGL_BIN(gt_, >);
+        INSTR_NATIVE_LGL_BIN(le_, <=);
+        INSTR_NATIVE_LGL_BIN(ge_, >=);
+        INSTR_NATIVE_LGL_BIN(eq_, ==);
+        INSTR_NATIVE_LGL_BIN(ne_, !=);
 
         INSTRUCTION(identical_noforce_) {
             R_bcstack_t rhs = ostackPop(ctx);
@@ -2379,14 +2498,6 @@ R_bcstack_t evalRirCode(Code* c, InterpreterInstance* ctx, SEXP env,
                 lhs = sexpToStackObj(PRVALUE(lhs.u.sxpval));
             bool res = stackObjsIdentical(lhs, rhs);
             ostackPushLogical(ctx, res);
-            NEXT();
-        }
-
-        INSTRUCTION(ne_) {
-            SLOWASSERT(R_PPStackTop >= 0);
-            R_bcstack_t lhs = ostackAt(ctx, 1);
-            R_bcstack_t rhs = ostackAt(ctx, 0);
-            DO_RELOP(!=);
             NEXT();
         }
 
@@ -2424,6 +2535,18 @@ R_bcstack_t evalRirCode(Code* c, InterpreterInstance* ctx, SEXP env,
                 UNOP_FALLBACK("!");
             }
 
+            NEXT();
+        }
+
+        INSTRUCTION(not_lgl_) {
+            int val = ostackPopLogical(ctx);
+            int res;
+            if (val == NA_LOGICAL) {
+                res = NA_LOGICAL;
+            } else {
+                res = (val == 0);
+            }
+            ostackPushLogical(ctx, res);
             NEXT();
         }
 

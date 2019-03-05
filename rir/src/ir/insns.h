@@ -230,46 +230,57 @@ DEF_INSTR(pick_, 1, 0, 0, 1)
  */
 DEF_INSTR(pull_, 1, 0, 1, 1)
 
+#define DEF_INSTR_NATIVE_NUM(name, imm, pop, push, pure)                       \
+    DEF_INSTR(name, imm, pop, push, pure)                                      \
+    DEF_INSTR(name##int_, imm, pop, push, pure)                                \
+    DEF_INSTR(name##real_, imm, pop, push, pure)
+
+#define DEF_INSTR_NATIVE_LGL(name, imm, pop, push, pure)                       \
+    DEF_INSTR(name, imm, pop, push, pure)                                      \
+    DEF_INSTR(name##lgl_, imm, pop, push, pure)
+
 /**
  * add_:: pop two values from object stack, add them, push result on object
  * stack. Works on any SEXP.
  */
-DEF_INSTR(add_, 0, 2, 1, 0)
+DEF_INSTR_NATIVE_NUM(add_, 0, 2, 1, 0)
 
 /**
  * uplus_:: unary plus
  */
-DEF_INSTR(uplus_, 0, 1, 1, 0)
+DEF_INSTR_NATIVE_NUM(uplus_, 0, 1, 1, 0)
 
 /**
  * inc_ :: increment tos integer
  */
 DEF_INSTR(inc_, 0, 1, 1, 1)
+DEF_INSTR(inc_int_, 0, 1, 1, 1)
 
-DEF_INSTR(sub_, 0, 2, 1, 0)
-DEF_INSTR(uminus_, 0, 1, 1, 0)
-DEF_INSTR(mul_, 0, 2, 1, 0)
-DEF_INSTR(div_, 0, 2, 1, 0)
-DEF_INSTR(idiv_, 0, 2, 1, 0)
-DEF_INSTR(mod_, 0, 2, 1, 0)
+DEF_INSTR_NATIVE_NUM(sub_, 0, 2, 1, 0)
+DEF_INSTR_NATIVE_NUM(uminus_, 0, 1, 1, 0)
+DEF_INSTR_NATIVE_NUM(mul_, 0, 2, 1, 0)
+DEF_INSTR_NATIVE_NUM(div_, 0, 2, 1, 0)
+DEF_INSTR_NATIVE_NUM(idiv_, 0, 2, 1, 0)
+DEF_INSTR_NATIVE_NUM(mod_, 0, 2, 1, 0)
+
 DEF_INSTR(pow_, 0, 2, 1, 0)
 
 /**
  * lt_:: relational operator <
  */
-DEF_INSTR(lt_, 0, 2, 1, 0)
-DEF_INSTR(gt_, 0, 2, 1, 0)
-DEF_INSTR(le_, 0, 2, 1, 0)
-DEF_INSTR(ge_, 0, 2, 1, 0)
-DEF_INSTR(eq_, 0, 2, 1, 0)
-DEF_INSTR(ne_, 0, 2, 1, 0)
+DEF_INSTR_NATIVE_LGL(lt_, 0, 2, 1, 0)
+DEF_INSTR_NATIVE_LGL(gt_, 0, 2, 1, 0)
+DEF_INSTR_NATIVE_LGL(le_, 0, 2, 1, 0)
+DEF_INSTR_NATIVE_LGL(ge_, 0, 2, 1, 0)
+DEF_INSTR_NATIVE_LGL(eq_, 0, 2, 1, 0)
+DEF_INSTR_NATIVE_LGL(ne_, 0, 2, 1, 0)
 
 DEF_INSTR(identical_noforce_, 0, 2, 1, 0)
 
 /**
  * not_:: unary negation operator !
  */
-DEF_INSTR(not_, 0, 1, 1, 0)
+DEF_INSTR_NATIVE_LGL(not_, 0, 1, 1, 0)
 
 /**
  * lgl_or_:: computes the logical (ternary) or of the two tos vals

@@ -527,6 +527,32 @@ RIR_INLINE bool trySetInPlace(SEXP old, R_bcstack_t val) {
 
 #define ostackPop(c) (*(--R_BCNodeStackTop))
 
+#ifdef SLOWASSERT
+
+static RIR_INLINE int ostackPopInt(InterpreterInstance* ctx) {
+    R_bcstack_t res = ostackPop(ctx);
+    assert(res.tag == STACK_OBJ_INT);
+    return res.u.ival;
+}
+
+static RIR_INLINE double ostackPopReal(InterpreterInstance* ctx) {
+    R_bcstack_t res = ostackPop(ctx);
+    assert(res.tag == STACK_OBJ_REAL);
+    return res.u.dval;
+}
+
+static RIR_INLINE int ostackPopLogical(InterpreterInstance* ctx) {
+    R_bcstack_t res = ostackPop(ctx);
+    assert(res.tag == STACK_OBJ_LOGICAL);
+    return res.u.ival;
+}
+
+#else
+#define ostackPopInt(c) ostackPop(c).u.ival
+#define ostackPopReal(c) ostackPop(c).u.dval
+#define ostackPopLogical(c) ostackPop(c).u.ival
+#endif
+
 #define ostackPush(c, v)                                                       \
     do {                                                                       \
         *R_BCNodeStackTop = (v);                                               \

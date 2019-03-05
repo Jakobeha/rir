@@ -75,35 +75,41 @@ enum class Sources {
 
 static Sources hasSources(Opcode bc) {
     switch (bc) {
+#define NATIVE_NUM(op)                                                         \
+    case Opcode::op:                                                           \
+    case Opcode::op##int_:                                                     \
+    case Opcode::op##real_
+#define NATIVE_LGL(op)                                                         \
+    case Opcode::op:                                                           \
+    case Opcode::op##lgl_
+
     case Opcode::extract1_1_:
     case Opcode::extract1_2_:
     case Opcode::extract2_1_:
     case Opcode::extract2_2_:
     case Opcode::seq_:
-    case Opcode::add_:
-    case Opcode::mul_:
-    case Opcode::div_:
-    case Opcode::idiv_:
-    case Opcode::mod_:
-    case Opcode::pow_:
-    case Opcode::sub_:
-    case Opcode::uplus_:
-    case Opcode::uminus_:
-    case Opcode::not_:
-    case Opcode::lt_:
-    case Opcode::gt_:
-    case Opcode::le_:
-    case Opcode::ge_:
-    case Opcode::eq_:
-    case Opcode::ne_:
-    case Opcode::colon_:
-    case Opcode::subassign1_1_:
-    case Opcode::subassign2_1_:
-    case Opcode::subassign1_2_:
-    case Opcode::subassign2_2_:
-        return Sources::Required;
+        NATIVE_NUM(add_)
+            : NATIVE_NUM(mul_)
+            : NATIVE_NUM(div_)
+            : NATIVE_NUM(idiv_)
+            : NATIVE_NUM(mod_)
+            : NATIVE_NUM(sub_)
+            : NATIVE_NUM(uplus_)
+            : NATIVE_NUM(uminus_)
+            : NATIVE_LGL(not_)
+            : NATIVE_LGL(lt_)
+            : NATIVE_LGL(gt_)
+            : NATIVE_LGL(le_)
+            : NATIVE_LGL(ge_)
+            : NATIVE_LGL(eq_)
+            : NATIVE_LGL(ne_)
+            : case Opcode::pow_ : case Opcode::colon_
+            : case Opcode::subassign1_1_ : case Opcode::subassign2_1_
+            : case Opcode::subassign1_2_ : case Opcode::subassign2_2_
+            : return Sources::Required;
 
     case Opcode::inc_:
+    case Opcode::inc_int_:
     case Opcode::identical_noforce_:
     case Opcode::push_:
     case Opcode::ldfun_:
@@ -188,6 +194,8 @@ SIMPLE_INSTRUCTIONS(V, _)
 
     case Opcode::invalid_:
     case Opcode::num_of: {}
+#undef NATIVE_LGL
+#undef NATIVE_NUM
     }
     assert(false);
     return Sources::NotNeeded;

@@ -4,6 +4,13 @@
 #include "simple_instruction_list.h"
 
 #define V_SIMPLE_INSTRUCTION_IN_BC_NOARGS(V, name, Name) V(_, name, name)
+#define BC_NOARGS_NATIVE_NUM(V, NESTED, op)                                    \
+    V(NESTED, op, op)                                                          \
+    V(NESTED, op##_int, op##_int)                                              \
+    V(NESTED, op##_real, op##_real)
+#define BC_NOARGS_NATIVE_LGL(V, NESTED, op)                                    \
+    V(NESTED, op, op)                                                          \
+    V(NESTED, op##_lgl, op##_lgl)
 
 #define BC_NOARGS(V, NESTED)                                                   \
     SIMPLE_INSTRUCTIONS(V_SIMPLE_INSTRUCTION_IN_BC_NOARGS, V)                  \
@@ -30,24 +37,26 @@
     V(NESTED, dup2, dup2)                                                      \
     V(NESTED, forSeqSize, for_seq_size)                                        \
     V(NESTED, inc, inc)                                                        \
+    V(NESTED, inc_int, inc_int)                                                \
     V(NESTED, close, close)                                                    \
-    V(NESTED, add, add)                                                        \
-    V(NESTED, mul, mul)                                                        \
-    V(NESTED, div, div)                                                        \
-    V(NESTED, pow, pow)                                                        \
-    V(NESTED, idiv, idiv)                                                      \
-    V(NESTED, mod, mod)                                                        \
-    V(NESTED, sub, sub)                                                        \
-    V(NESTED, uplus, uplus)                                                    \
-    V(NESTED, uminus, uminus)                                                  \
+    BC_NOARGS_NATIVE_NUM(V, NESTED, add)                                       \
+    BC_NOARGS_NATIVE_NUM(V, NESTED, mul)                                       \
+    BC_NOARGS_NATIVE_NUM(V, NESTED, div)                                       \
+    BC_NOARGS_NATIVE_NUM(V, NESTED, idiv)                                      \
+    BC_NOARGS_NATIVE_NUM(V, NESTED, mod)                                       \
+    BC_NOARGS_NATIVE_NUM(V, NESTED, sub)                                       \
+    BC_NOARGS_NATIVE_NUM(V, NESTED, uplus)                                     \
+    BC_NOARGS_NATIVE_NUM(V, NESTED, uminus)                                    \
+    BC_NOARGS_NATIVE_LGL(V, NESTED, lt)                                        \
+    BC_NOARGS_NATIVE_LGL(V, NESTED, gt)                                        \
+    BC_NOARGS_NATIVE_LGL(V, NESTED, le)                                        \
+    BC_NOARGS_NATIVE_LGL(V, NESTED, ge)                                        \
+    BC_NOARGS_NATIVE_LGL(V, NESTED, eq)                                        \
+    BC_NOARGS_NATIVE_LGL(V, NESTED, ne)                                        \
     V(NESTED, not_, not)                                                       \
-    V(NESTED, lt, lt)                                                          \
-    V(NESTED, gt, gt)                                                          \
-    V(NESTED, le, le)                                                          \
-    V(NESTED, ge, ge)                                                          \
-    V(NESTED, eq, eq)                                                          \
+    V(NESTED, not_lgl, not_lgl)                                                \
+    V(NESTED, pow, pow)                                                        \
     V(NESTED, identicalNoforce, identical_noforce)                             \
-    V(NESTED, ne, ne)                                                          \
     V(NESTED, seq, seq)                                                        \
     V(NESTED, colon, colon)                                                    \
     V(NESTED, makeUnique, make_unique)                                         \

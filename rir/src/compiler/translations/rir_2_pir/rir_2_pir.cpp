@@ -651,20 +651,34 @@ bool Rir2Pir::compileBC(const BC& bc, Opcode* pos, Opcode* nextPos,
         break;                                                                 \
     }
 
-        BINOP(Lt, lt_);
-        BINOP(Gt, gt_);
-        BINOP(Gte, le_);
-        BINOP(Lte, ge_);
-        BINOP(Mod, mod_);
-        BINOP(Div, div_);
-        BINOP(IDiv, idiv_);
-        BINOP(Add, add_);
-        BINOP(Mul, mul_);
+        // Currently, if PIR ever were to recompile a native opcode, it would
+        // simply forget the information and "rediscover" it.
+
+#define BINOP_NATIVE_NUM(Name, Op)                                             \
+    BINOP(Name, Op);                                                           \
+    BINOP(Name, Op##int_);                                                     \
+    BINOP(Name, Op##real_);
+
+#define BINOP_NATIVE_LGL(Name, Op)                                             \
+    BINOP(Name, Op);                                                           \
+    BINOP(Name, Op##lgl_);
+
+        BINOP_NATIVE_LGL(Lt, lt_);
+        BINOP_NATIVE_LGL(Gt, gt_);
+        BINOP_NATIVE_LGL(Gte, le_);
+        BINOP_NATIVE_LGL(Lte, ge_);
+        BINOP_NATIVE_NUM(Mod, mod_);
+        BINOP_NATIVE_NUM(Div, div_);
+        BINOP_NATIVE_NUM(IDiv, idiv_);
+        BINOP_NATIVE_NUM(Add, add_);
+        BINOP_NATIVE_NUM(Mul, mul_);
         BINOP(Colon, colon_);
         BINOP(Pow, pow_);
-        BINOP(Sub, sub_);
-        BINOP(Eq, eq_);
-        BINOP(Neq, ne_);
+        BINOP_NATIVE_NUM(Sub, sub_);
+        BINOP_NATIVE_LGL(Eq, eq_);
+        BINOP_NATIVE_LGL(Neq, ne_);
+#undef BINOP_NATIVE_LGL
+#undef BINOP_NATIVE_NUM
 #undef BINOP
 
     case Opcode::identical_noforce_: {
@@ -680,9 +694,19 @@ bool Rir2Pir::compileBC(const BC& bc, Opcode* pos, Opcode* nextPos,
         push(insert(new Name(v, env, srcIdx)));                                \
         break;                                                                 \
     }
-        UNOP(Plus, uplus_);
-        UNOP(Minus, uminus_);
-        UNOP(Not, not_);
+
+#define UNOP_NATIVE_NUM(Name, Op)                                              \
+    UNOP(Name, Op);                                                            \
+    UNOP(Name, Op##int_);                                                      \
+    UNOP(Name, Op##real_);
+
+#define UNOP_NATIVE_LGL(Name, Op)                                              \
+    UNOP(Name, Op);                                                            \
+    UNOP(Name, Op##lgl_);
+
+        UNOP_NATIVE_NUM(Plus, uplus_);
+        UNOP_NATIVE_NUM(Minus, uminus_);
+        UNOP_NATIVE_LGL(Not, not_);
         UNOP(Length, length_);
 #undef UNOP
 
