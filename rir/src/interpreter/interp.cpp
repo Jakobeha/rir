@@ -1278,6 +1278,30 @@ static SEXP cachedGetVar(SEXP env, Immediate idx, InterpreterInstance* ctx,
     return Rf_findVar(sym, env);
 }
 
+static SEXP loadVar(SEXP env, Immediate id, InterpreterInstance* ctx,
+                    BindingCache* bindingCache) {
+    SEXP res = cachedGetVar(env, id, ctx, bindingCache);
+    R_Visible = TRUE;
+
+    if (res == R_UnboundValue) {
+        SEXP sym = cp_pool_at(ctx, id);
+        Rf_error("object \"%s\" not found", CHAR(PRINTNAME(sym)));
+    } else if (res == R_MissingArg) {
+        SEXP sym = cp_pool_at(ctx, id);
+        Rf_error("argument \"%s\" is missing, with no default",
+                 CHAR(PRINTNAME(sym)));
+    }
+
+    // if promise, evaluate & return
+    if (TYPEOF(res) == PROMSXP)
+        res = promiseValue(res, ctx);
+
+    if (res != R_NilValue)
+        ENSURE_NAMED(res);
+
+    return res;
+}
+
 #define ACTIVE_BINDING_MASK (1 << 15)
 #define BINDING_LOCK_MASK (1 << 14)
 #define IS_ACTIVE_BINDING(b) ((b)->sxpinfo.gp & ACTIVE_BINDING_MASK)
@@ -1325,6 +1349,50 @@ static void cachedSetVar(R_bcstack_t val, SEXP env, Immediate idx,
     setVar(sym, val, env, false);
 }
 
+static void cachedSetInt(int val, SEXP env, Immediate idx,
+                         InterpreterInstance* ctx, BindingCache* bindingCache) {
+    SEXP loc = cachedGetBindingCell(env, idx, ctx, bindingCache);
+    if (loc && !BINDING_IS_LOCKED(loc) && !IS_ACTIVE_BINDING(loc)) {
+        SEXP cur = CAR(loc);
+        *INTEGER(cur) = val;
+        return;
+    }
+
+    SEXP sym = cp_pool_at(ctx, idx);
+    SLOWASSERT(TYPEOF(sym) == SYMSXP);
+    setVar(sym, intStackObj(val), env, false);
+}
+
+static void cachedSetReal(double val, SEXP env, Immediate idx,
+                          InterpreterInstance* ctx,
+                          BindingCache* bindingCache) {
+    SEXP loc = cachedGetBindingCell(env, idx, ctx, bindingCache);
+    if (loc && !BINDING_IS_LOCKED(loc) && !IS_ACTIVE_BINDING(loc)) {
+        SEXP cur = CAR(loc);
+        *REAL(cur) = val;
+        return;
+    }
+
+    SEXP sym = cp_pool_at(ctx, idx);
+    SLOWASSERT(TYPEOF(sym) == SYMSXP);
+    setVar(sym, realStackObj(val), env, false);
+}
+
+static void cachedSetLogical(int val, SEXP env, Immediate idx,
+                             InterpreterInstance* ctx,
+                             BindingCache* bindingCache) {
+    SEXP loc = cachedGetBindingCell(env, idx, ctx, bindingCache);
+    if (loc && !BINDING_IS_LOCKED(loc) && !IS_ACTIVE_BINDING(loc)) {
+        SEXP cur = CAR(loc);
+        *LOGICAL(cur) = val;
+        return;
+    }
+
+    SEXP sym = cp_pool_at(ctx, idx);
+    SLOWASSERT(TYPEOF(sym) == SYMSXP);
+    setVar(sym, logicalStackObj(val), env, false);
+}
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wcast-align"
 
@@ -1332,29 +1400,16 @@ static void cachedSetVar(R_bcstack_t val, SEXP env, Immediate idx,
 // terrible, can't find out where in the evalRirCode function
 #pragma GCC diagnostic ignored "-Wstrict-overflow"
 
-RCNTXT* nextFunctionContext(RCNTXT* cptr = R_GlobalContext) {
+RCNTXT* getFunctionContext(size_t pos = 0, RCNTXT* cptr = R_GlobalContext) {
     while (cptr->nextcontext != NULL) {
         if (cptr->callflag & CTXT_FUNCTION) {
-            return cptr;
+            if (pos == 0)
+                return cptr;
+            pos--;
         }
         cptr = cptr->nextcontext;
     }
     assert(false);
-}
-
-RCNTXT* firstFunctionContextWithDelayedEnv() {
-    auto cptr = R_GlobalContext;
-    RCNTXT* candidate = nullptr;
-    while (cptr->nextcontext != NULL) {
-        if (cptr->callflag & CTXT_FUNCTION) {
-            if (cptr->cloenv == symbol::delayedEnv)
-                candidate = cptr;
-            else
-                break;
-        }
-        cptr = cptr->nextcontext;
-    }
-    return candidate;
 }
 
 RCNTXT* findFunctionContextFor(SEXP e) {
@@ -1400,6 +1455,10 @@ void deoptFramesWithContext(InterpreterInstance* ctx,
                "Frame with context after frame without context");
         cntxt = originalCntxt;
     } else {
+        // NOTE: this assert triggers if we can't find the context of the
+        // current function. Usually the reason is that a wrong environment is
+        // stored in the context.
+        assert(!outermostFrame && "Cannot find outermost function context");
         // If the inlinee had no context, we need to synthesize one
         // TODO: need to add ast and closure to the deopt metadata to create a
         // complete context
@@ -1466,22 +1525,18 @@ void deoptFramesWithContext(InterpreterInstance* ctx,
     R_bcstack_t res = trampoline();
     SLOWASSERT((size_t)ostackLength(ctx) == frameBaseSize);
 
-    // Dont end the outermost context (unless it was a fake one) to be able to
-    // jump out below
-    if (!outermostFrame || !originalCntxt) {
+    if (!outermostFrame) {
         PROTECT(sysparent);
         res = sexpToStackObj(stackObjToSexp(res));
         UNPROTECT(1);
         endClosureContext(cntxt, res.u.sxpval);
-    }
-
-    if (outermostFrame) {
+    } else {
+        assert(findFunctionContextFor(deoptEnv) == cntxt);
         // long-jump out of all the inlined contexts
         PROTECT(sysparent);
         SEXP resSexp = stackObjToSexp(res);
         UNPROTECT(1);
-        Rf_findcontext(CTXT_BROWSER | CTXT_FUNCTION,
-                       nextFunctionContext()->cloenv, resSexp);
+        Rf_findcontext(CTXT_BROWSER | CTXT_FUNCTION, cntxt->cloenv, resSexp);
         assert(false);
     }
 
@@ -1578,6 +1633,8 @@ R_bcstack_t evalRirCode(Code* c, InterpreterInstance* ctx, SEXP env,
         INSTRUCTION(mk_env_) {
             size_t n = readImmediate();
             advanceImmediate();
+            int contextPos = readSignedImmediate();
+            advanceImmediate();
             R_bcstack_t parent = ostackPop(ctx);
             SLOWASSERT(stackObjSexpType(parent) == ENVSXP &&
                        "Non-environment used as environment parent.");
@@ -1597,10 +1654,12 @@ R_bcstack_t evalRirCode(Code* c, InterpreterInstance* ctx, SEXP env,
             UNPROTECT(1);
             SEXP res = Rf_NewEnvironment(R_NilValue, arglist, parent.u.sxpval);
 
-            if (auto cptr = firstFunctionContextWithDelayedEnv()) {
-                cptr->cloenv = res;
-                if (cptr->promargs == symbol::delayedArglist)
-                    cptr->promargs = arglist;
+            if (contextPos > 0) {
+                if (auto cptr = getFunctionContext(contextPos - 1)) {
+                    cptr->cloenv = res;
+                    if (cptr->promargs == symbol::delayedArglist)
+                        cptr->promargs = arglist;
+                }
             }
 
             ostackPushSexp(ctx, res);
@@ -1613,6 +1672,8 @@ R_bcstack_t evalRirCode(Code* c, InterpreterInstance* ctx, SEXP env,
             // option becase R_Preserve is slow. We must find a simple story so
             // that the gc trace rir wrappers.
             size_t n = readImmediate();
+            advanceImmediate();
+            int contextPos = readSignedImmediate();
             advanceImmediate();
             // Do we need to preserve parent and the arg vals?
             SEXP parent = ostackPopSexp(ctx);
@@ -1628,8 +1689,10 @@ R_bcstack_t evalRirCode(Code* c, InterpreterInstance* ctx, SEXP env,
             envStubs.push_back(envStub);
             SEXP res = (SEXP)envStub;
 
-            if (auto cptr = firstFunctionContextWithDelayedEnv())
-                cptr->cloenv = res;
+            if (contextPos > 0) {
+                if (auto cptr = getFunctionContext(contextPos - 1))
+                    cptr->cloenv = res;
+            }
 
             ostackPushSexp(ctx, res);
             NEXT();
@@ -1683,26 +1746,36 @@ R_bcstack_t evalRirCode(Code* c, InterpreterInstance* ctx, SEXP env,
         INSTRUCTION(ldvar_) {
             Immediate id = readImmediate();
             advanceImmediate();
-            SEXP res = cachedGetVar(env, id, ctx, bindingCache);
-            R_Visible = TRUE;
-
-            if (res == R_UnboundValue) {
-                SEXP sym = cp_pool_at(ctx, id);
-                Rf_error("object \"%s\" not found", CHAR(PRINTNAME(sym)));
-            } else if (res == R_MissingArg) {
-                SEXP sym = cp_pool_at(ctx, id);
-                Rf_error("argument \"%s\" is missing, with no default",
-                         CHAR(PRINTNAME(sym)));
-            }
-
-            // if promise, evaluate & return
-            if (TYPEOF(res) == PROMSXP)
-                res = promiseValue(res, ctx);
-
-            if (res != R_NilValue)
-                ENSURE_NAMED(res);
+            SEXP res = loadVar(env, id, ctx, bindingCache);
 
             ostackPushSexp(ctx, res);
+            NEXT();
+        }
+
+        INSTRUCTION(ldvar_int_) {
+            Immediate id = readImmediate();
+            advanceImmediate();
+            SEXP res = loadVar(env, id, ctx, bindingCache);
+
+            ostackPushInt(ctx, *INTEGER(res));
+            NEXT();
+        }
+
+        INSTRUCTION(ldvar_real_) {
+            Immediate id = readImmediate();
+            advanceImmediate();
+            SEXP res = loadVar(env, id, ctx, bindingCache);
+
+            ostackPushReal(ctx, *REAL(res));
+            NEXT();
+        }
+
+        INSTRUCTION(ldvar_lgl_) {
+            Immediate id = readImmediate();
+            advanceImmediate();
+            SEXP res = loadVar(env, id, ctx, bindingCache);
+
+            ostackPushLogical(ctx, *LOGICAL(res));
             NEXT();
         }
 
@@ -1847,25 +1920,50 @@ R_bcstack_t evalRirCode(Code* c, InterpreterInstance* ctx, SEXP env,
             NEXT();
         }
 
-        INSTRUCTION(stvar_) {
-            Immediate id = readImmediate();
-            advanceImmediate();
-            R_bcstack_t val = ostackPop(ctx);
+#define INSTR_STVAR(name, keepMissing)                                         \
+    INSTRUCTION(name) {                                                        \
+        Immediate id = readImmediate();                                        \
+        advanceImmediate();                                                    \
+        R_bcstack_t val = ostackPop(ctx);                                      \
+                                                                               \
+        cachedSetVar(val, env, id, ctx, bindingCache, keepMissing);            \
+                                                                               \
+        NEXT();                                                                \
+    }                                                                          \
+                                                                               \
+    INSTRUCTION(name##int_) {                                                  \
+        Immediate id = readImmediate();                                        \
+        advanceImmediate();                                                    \
+        int val = ostackPopInt(ctx);                                           \
+                                                                               \
+        cachedSetInt(val, env, id, ctx, bindingCache);                         \
+                                                                               \
+        NEXT();                                                                \
+    }                                                                          \
+                                                                               \
+    INSTRUCTION(name##real_) {                                                 \
+        Immediate id = readImmediate();                                        \
+        advanceImmediate();                                                    \
+        double val = ostackPopReal(ctx);                                       \
+                                                                               \
+        cachedSetReal(val, env, id, ctx, bindingCache);                        \
+                                                                               \
+        NEXT();                                                                \
+    }                                                                          \
+                                                                               \
+    INSTRUCTION(name##lgl_) {                                                  \
+        Immediate id = readImmediate();                                        \
+        advanceImmediate();                                                    \
+        int val = ostackPopLogical(ctx);                                       \
+                                                                               \
+        cachedSetLogical(val, env, id, ctx, bindingCache);                     \
+                                                                               \
+        NEXT();                                                                \
+    }
 
-            cachedSetVar(val, env, id, ctx, bindingCache);
-
-            NEXT();
-        }
-
-        INSTRUCTION(starg_) {
-            Immediate id = readImmediate();
-            advanceImmediate();
-            R_bcstack_t val = ostackPop(ctx);
-
-            cachedSetVar(val, env, id, ctx, bindingCache, true);
-
-            NEXT();
-        }
+        // TODO: Not sure how to handle missing arguments with unboxed values
+        INSTR_STVAR(stvar_, false)
+        INSTR_STVAR(starg_, true)
 
         INSTRUCTION(stvar_super_) {
             SEXP sym = readConst(ctx, readImmediate());

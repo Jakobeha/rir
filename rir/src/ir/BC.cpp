@@ -12,6 +12,10 @@
 
 namespace rir {
 
+#define NATIVE(op)                                                             \
+    Opcode::op : case Opcode::op##int_ : case Opcode::op##real_                \
+        : case Opcode::op##lgl_
+
 void BC::write(CodeStream& cs) const {
     cs.insert(bc);
     switch (bc) {
@@ -38,13 +42,13 @@ BC_NOARGS(V, _)
     case Opcode::deopt_:
     case Opcode::ldfun_:
     case Opcode::ldddvar_:
-    case Opcode::ldvar_:
+    case NATIVE(ldvar_):
     case Opcode::ldvar_noforce_:
     case Opcode::ldvar_super_:
     case Opcode::ldvar_noforce_super_:
     case Opcode::ldlval_:
-    case Opcode::starg_:
-    case Opcode::stvar_:
+    case NATIVE(starg_):
+    case NATIVE(stvar_):
     case Opcode::stvar_super_:
     case Opcode::missing_:
         cs.insert(immediate.pool);
@@ -219,7 +223,7 @@ void BC::print(std::ostream& out) const {
     case Opcode::mk_env_: {
         auto args = immediate.mkEnvFixedArgs;
         BC::NumArgs nargs = args.nargs;
-        out << nargs << " ";
+        out << nargs << ", c" << args.context << "  ";
         printNames(out, mkEnvExtra().names);
         break;
     }
@@ -232,14 +236,14 @@ void BC::print(std::ostream& out) const {
         out << dumpSexp(immediateConst()).c_str();
         break;
     case Opcode::ldfun_:
-    case Opcode::ldvar_:
+    case NATIVE(ldvar_):
     case Opcode::ldvar_noforce_:
     case Opcode::ldvar_super_:
     case Opcode::ldvar_noforce_super_:
     case Opcode::ldlval_:
     case Opcode::ldddvar_:
-    case Opcode::starg_:
-    case Opcode::stvar_:
+    case NATIVE(starg_):
+    case NATIVE(stvar_):
     case Opcode::stvar_super_:
     case Opcode::missing_:
         out << CHAR(PRINTNAME(immediateConst()));
@@ -331,5 +335,7 @@ BC_NOARGS(V, _)
     }
     out << "\n";
 }
+
+#undef NATIVE
 
 } // namespace rir

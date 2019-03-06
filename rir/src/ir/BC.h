@@ -18,6 +18,20 @@ namespace rir {
 
 class CodeStream;
 
+#define VAR(name, op)                                                          \
+    BC BC::name(SEXP sym) {                                                    \
+        assert(TYPEOF(sym) == SYMSXP);                                         \
+        assert(strlen(CHAR(PRINTNAME(sym))));                                  \
+        ImmediateArguments i;                                                  \
+        i.pool = Pool::insert(sym);                                            \
+        return BC(Opcode::op, i);                                              \
+    }
+#define NATIVE_VAR(name)                                                       \
+    VAR(name, name##_)                                                         \
+    VAR(name##_int, name##_int_)                                               \
+    VAR(name##_real, name##_real_)                                             \
+    VAR(name##_lgl, name##_lgl_)
+
 #define V(NESTED, name, name_)\
 BC BC::name() { return BC(Opcode::name_##_); }
 BC_NOARGS(V, _)
@@ -58,41 +72,11 @@ BC BC::ldddvar(SEXP sym) {
     i.pool = Pool::insert(sym);
     return BC(Opcode::ldddvar_, i);
 }
-BC BC::ldlval(SEXP sym) {
-    assert(TYPEOF(sym) == SYMSXP);
-    assert(strlen(CHAR(PRINTNAME(sym))));
-    ImmediateArguments i;
-    i.pool = Pool::insert(sym);
-    return BC(Opcode::ldlval_, i);
-}
-BC BC::ldvar(SEXP sym) {
-    assert(TYPEOF(sym) == SYMSXP);
-    assert(strlen(CHAR(PRINTNAME(sym))));
-    ImmediateArguments i;
-    i.pool = Pool::insert(sym);
-    return BC(Opcode::ldvar_, i);
-}
-BC BC::ldvarNoForce(SEXP sym) {
-    assert(TYPEOF(sym) == SYMSXP);
-    assert(strlen(CHAR(PRINTNAME(sym))));
-    ImmediateArguments i;
-    i.pool = Pool::insert(sym);
-    return BC(Opcode::ldvar_noforce_, i);
-}
-BC BC::ldvarSuper(SEXP sym) {
-    assert(TYPEOF(sym) == SYMSXP);
-    assert(strlen(CHAR(PRINTNAME(sym))));
-    ImmediateArguments i;
-    i.pool = Pool::insert(sym);
-    return BC(Opcode::ldvar_super_, i);
-}
-BC BC::ldvarNoForceSuper(SEXP sym) {
-    assert(TYPEOF(sym) == SYMSXP);
-    assert(strlen(CHAR(PRINTNAME(sym))));
-    ImmediateArguments i;
-    i.pool = Pool::insert(sym);
-    return BC(Opcode::ldvar_noforce_super_, i);
-}
+VAR(ldlval, ldlval_)
+NATIVE_VAR(ldvar)
+VAR(ldvarNoForce, ldvar_noforce_)
+VAR(ldvarSuper, ldvar_super_)
+VAR(ldvarNoForceSuper, ldvar_noforce_super_)
 BC BC::ldarg(uint32_t offset) {
     ImmediateArguments i;
     i.arg_idx = offset;
@@ -138,34 +122,10 @@ BC BC::promise(FunIdx prom) {
     i.fun = prom;
     return BC(Opcode::promise_, i);
 }
-BC BC::missing(SEXP sym) {
-    assert(TYPEOF(sym) == SYMSXP);
-    assert(strlen(CHAR(PRINTNAME(sym))));
-    ImmediateArguments i;
-    i.pool = Pool::insert(sym);
-    return BC(Opcode::missing_, i);
-}
-BC BC::starg(SEXP sym) {
-    assert(TYPEOF(sym) == SYMSXP);
-    assert(strlen(CHAR(PRINTNAME(sym))));
-    ImmediateArguments i;
-    i.pool = Pool::insert(sym);
-    return BC(Opcode::starg_, i);
-}
-BC BC::stvar(SEXP sym) {
-    assert(TYPEOF(sym) == SYMSXP);
-    assert(strlen(CHAR(PRINTNAME(sym))));
-    ImmediateArguments i;
-    i.pool = Pool::insert(sym);
-    return BC(Opcode::stvar_, i);
-}
-BC BC::stvarSuper(SEXP sym) {
-    assert(TYPEOF(sym) == SYMSXP);
-    assert(strlen(CHAR(PRINTNAME(sym))));
-    ImmediateArguments i;
-    i.pool = Pool::insert(sym);
-    return BC(Opcode::stvar_super_, i);
-}
+VAR(missing, missing_)
+NATIVE_VAR(starg)
+NATIVE_VAR(stvar)
+VAR(stvarSuper, stvar_super_)
 BC BC::alloc(int type) {
     ImmediateArguments i;
     i.i = type;
@@ -289,9 +249,11 @@ BC BC::callBuiltin(size_t nargs, SEXP ast, SEXP builtin) {
     return BC(Opcode::call_builtin_, im);
 }
 
-BC BC::mkEnv(const std::vector<SEXP>& names, bool stub) {
+BC BC::mkEnv(const std::vector<SEXP>& names, SignedImmediate contextPos,
+             bool stub) {
     ImmediateArguments im;
     im.mkEnvFixedArgs.nargs = names.size();
+    im.mkEnvFixedArgs.context = contextPos;
     std::vector<PoolIdx> nameIdxs;
     for (auto n : names)
         nameIdxs.push_back(Pool::insert(n));
@@ -309,6 +271,9 @@ BC BC::deopt(SEXP deoptMetadata) {
     i.pool = Pool::insert(deoptMetadata);
     return BC(Opcode::deopt_, i);
 }
+
+#undef NATIVE_VAR
+#undef VAR
 
 } // namespace rir
 

@@ -113,6 +113,7 @@ class BC {
     };
     struct MkEnvFixedArgs {
         NumArgs nargs;
+        SignedImmediate context;
     };
 
     static constexpr size_t MAX_NUM_ARGS = 1L << (8 * sizeof(PoolIdx));
@@ -299,7 +300,7 @@ class BC {
             pc++;
             Immediate nargs;
             memcpy(&nargs, pc, sizeof(Immediate));
-            return 1 + (1 + nargs) * sizeof(Immediate);
+            return 1 + (2 + nargs) * sizeof(Immediate);
         }
         default: {}
         }
@@ -319,6 +320,12 @@ class BC {
 
     // ==== Factory methods
     // to create new BC objects, which can be streamed to a CodeStream
+#define NATIVE_VAR(name)                                                       \
+    inline static BC name(SEXP sym);                                           \
+    inline static BC name##_int(SEXP sym);                                     \
+    inline static BC name##_real(SEXP sym);                                    \
+    inline static BC name##_lgl(SEXP sym)
+
 #define V(NESTED, name, name_) inline static BC name();
 BC_NOARGS(V, _)
 #undef V
@@ -330,7 +337,7 @@ BC_NOARGS(V, _)
     inline static BC push_from_pool(PoolIdx idx);
     inline static BC push_code(FunIdx i);
     inline static BC ldfun(SEXP sym);
-    inline static BC ldvar(SEXP sym);
+    NATIVE_VAR(ldvar);
     inline static BC ldvarNoForce(SEXP sym);
     inline static BC ldvarSuper(SEXP sym);
     inline static BC ldvarNoForceSuper(SEXP sym);
@@ -341,8 +348,8 @@ BC_NOARGS(V, _)
     inline static BC stloc(uint32_t offset);
     inline static BC copyloc(uint32_t target, uint32_t source);
     inline static BC promise(FunIdx prom);
-    inline static BC stvar(SEXP sym);
-    inline static BC starg(SEXP sym);
+    NATIVE_VAR(stvar);
+    NATIVE_VAR(starg);
     inline static BC stvarSuper(SEXP sym);
     inline static BC missing(SEXP sym);
     inline static BC alloc(int type);
@@ -372,7 +379,8 @@ BC_NOARGS(V, _)
                                 SEXP targetVersion, const Assumptions& given);
     inline static BC callBuiltin(size_t nargs, SEXP ast, SEXP target);
 
-    inline static BC mkEnv(const std::vector<SEXP>& names, bool stub);
+    inline static BC mkEnv(const std::vector<SEXP>& names,
+                           SignedImmediate contextPos, bool stub);
 
     inline static BC decode(Opcode* pc, const Code* code) {
         BC cur;
@@ -386,6 +394,7 @@ BC_NOARGS(V, _)
         cur.decodeFixlen(pc);
         return cur;
     }
+#undef NATIVE_VAR
 
   private:
     // Some Bytecodes need extra information. For example in the case of the
@@ -587,17 +596,20 @@ BC_NOARGS(V, _)
                                                               Opcode* pc) {
         ImmediateArguments immediate;
         switch (bc) {
+#define NATIVE(op)                                                             \
+    Opcode::op : case Opcode::op##int_ : case Opcode::op##real_                \
+        : case Opcode::op##lgl_
         case Opcode::deopt_:
         case Opcode::push_:
         case Opcode::ldfun_:
-        case Opcode::ldvar_:
+        case NATIVE(ldvar_):
         case Opcode::ldvar_noforce_:
         case Opcode::ldvar_super_:
         case Opcode::ldvar_noforce_super_:
         case Opcode::ldlval_:
         case Opcode::ldddvar_:
-        case Opcode::stvar_:
-        case Opcode::starg_:
+        case NATIVE(stvar_):
+        case NATIVE(starg_):
         case Opcode::stvar_super_:
         case Opcode::missing_:
             memcpy(&immediate.pool, pc, sizeof(PoolIdx));
@@ -667,6 +679,7 @@ BC_NOARGS(V, _)
         case Opcode::num_of:
             assert(false);
             break;
+#undef NATIVE
         }
         return immediate;
     }

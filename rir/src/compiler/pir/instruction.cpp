@@ -330,6 +330,7 @@ void MkEnv::printArgs(std::ostream& out, bool tty) const {
     });
     out << "parent=";
     Instruction::printEnv(out, tty);
+    out << ", context " << context;
 }
 
 void Is::printArgs(std::ostream& out, bool tty) const {
