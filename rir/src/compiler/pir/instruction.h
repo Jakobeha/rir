@@ -196,6 +196,7 @@ class Instruction : public Value {
     }
 
     typedef std::function<bool(Value*)> ArgumentValuePredicateIterator;
+    typedef std::function<bool(const InstrArg&)> ArgumentPredicateIterator;
     typedef std::function<void(Value*)> ArgumentValueIterator;
     typedef std::function<void(const InstrArg&)> ArgumentIterator;
     typedef std::function<void(InstrArg&)> MutableArgumentIterator;
@@ -203,6 +204,13 @@ class Instruction : public Value {
     bool anyArg(Instruction::ArgumentValuePredicateIterator it) const {
         for (size_t i = 0; i < nargs(); ++i)
             if (it(arg(i).val()))
+                return true;
+        return false;
+    }
+
+    bool anyArg(Instruction::ArgumentPredicateIterator it) const {
+        for (size_t i = 0; i < nargs(); ++i)
+            if (it(arg(i)))
                 return true;
         return false;
     }

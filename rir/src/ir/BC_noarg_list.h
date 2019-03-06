@@ -75,7 +75,8 @@
     V(NESTED, swap, swap)                                                      \
     V(NESTED, isobj, isobj)                                                    \
     V(NESTED, isstubenv, isstubenv)                                            \
-    V(NESTED, return_, return )
+    V(NESTED, return_, return )                                                \
+    V(NESTED, unbox, unbox)
 
 #undef V_SIMPLE_INSTRUCTION
 

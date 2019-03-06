@@ -934,24 +934,56 @@ size_t Pir2Rir::compileCode(Context& ctx, Code* code) {
         cs.addSrcIdx(instr->srcIdx);                                           \
         break;                                                                 \
     }
-                SIMPLE_WITH_SRCIDX(Add, add);
-                SIMPLE_WITH_SRCIDX(Sub, sub);
-                SIMPLE_WITH_SRCIDX(Mul, mul);
-                SIMPLE_WITH_SRCIDX(Div, div);
-                SIMPLE_WITH_SRCIDX(IDiv, idiv);
-                SIMPLE_WITH_SRCIDX(Mod, mod);
+#define SIMPLE_NATIVE_NUM(Name, Factory)                                       \
+    case Tag::Name: {                                                          \
+        auto op = Name::Cast(instr);                                           \
+        if (!op->anyArg([](const InstrArg& arg) {                              \
+                return !arg.type().isA(PirType::unboxed(RType::integer));      \
+            })) {                                                              \
+            cs << BC::Factory##_int();                                         \
+        } else if (!op->anyArg([](const InstrArg& arg) {                       \
+                       return !arg.type().isA(PirType::unboxed(RType::real));  \
+                   })) {                                                       \
+            cs << BC::Factory##_real();                                        \
+        } else {                                                               \
+            cs << BC::Factory();                                               \
+        }                                                                      \
+        cs.addSrcIdx(instr->srcIdx);                                           \
+        break;                                                                 \
+    }
+#define SIMPLE_NATIVE_LGL(Name, Factory)                                       \
+    SIMPLE_NATIVE_LGL2(Name, Factory, Factory)
+#define SIMPLE_NATIVE_LGL2(Name, Factory1, Factory2)                           \
+    case Tag::Name: {                                                          \
+        auto op = Name::Cast(instr);                                           \
+        if (!op->anyArg([](const InstrArg& arg) {                              \
+                return !arg.type().isA(PirType::unboxed(RType::logical));      \
+            })) {                                                              \
+            cs << BC::Factory1##_lgl();                                        \
+        } else {                                                               \
+            cs << BC::Factory2();                                              \
+        }                                                                      \
+        cs.addSrcIdx(instr->srcIdx);                                           \
+        break;                                                                 \
+    }
+                SIMPLE_NATIVE_NUM(Add, add);
+                SIMPLE_NATIVE_NUM(Sub, sub);
+                SIMPLE_NATIVE_NUM(Mul, mul);
+                SIMPLE_NATIVE_NUM(Div, div);
+                SIMPLE_NATIVE_NUM(IDiv, idiv);
+                SIMPLE_NATIVE_NUM(Mod, mod);
                 SIMPLE_WITH_SRCIDX(Pow, pow);
-                SIMPLE_WITH_SRCIDX(Lt, lt);
-                SIMPLE_WITH_SRCIDX(Gt, gt);
-                SIMPLE_WITH_SRCIDX(Lte, ge);
-                SIMPLE_WITH_SRCIDX(Gte, le);
-                SIMPLE_WITH_SRCIDX(Eq, eq);
-                SIMPLE_WITH_SRCIDX(Neq, ne);
+                SIMPLE_NATIVE_LGL(Lt, lt);
+                SIMPLE_NATIVE_LGL(Gt, gt);
+                SIMPLE_NATIVE_LGL(Lte, ge);
+                SIMPLE_NATIVE_LGL(Gte, le);
+                SIMPLE_NATIVE_LGL(Eq, eq);
+                SIMPLE_NATIVE_LGL(Neq, ne);
                 SIMPLE_WITH_SRCIDX(Colon, colon);
                 SIMPLE_WITH_SRCIDX(AsLogical, asLogical);
-                SIMPLE_WITH_SRCIDX(Plus, uplus);
-                SIMPLE_WITH_SRCIDX(Minus, uminus);
-                SIMPLE_WITH_SRCIDX(Not, not_);
+                SIMPLE_NATIVE_NUM(Plus, uplus);
+                SIMPLE_NATIVE_NUM(Minus, uminus);
+                SIMPLE_NATIVE_LGL2(Not, not, not_);
                 SIMPLE_WITH_SRCIDX(Extract1_1D, extract1_1);
                 SIMPLE_WITH_SRCIDX(Extract2_1D, extract2_1);
                 SIMPLE_WITH_SRCIDX(Extract1_2D, extract1_2);
@@ -960,6 +992,8 @@ size_t Pir2Rir::compileCode(Context& ctx, Code* code) {
                 SIMPLE_WITH_SRCIDX(Subassign2_1D, subassign2_1);
                 SIMPLE_WITH_SRCIDX(Subassign1_2D, subassign1_2);
                 SIMPLE_WITH_SRCIDX(Subassign2_2D, subassign2_2);
+#undef SIMPLE_NATIVE_LGL
+#undef SIMPLE_NATIVE_NUM
 #undef SIMPLE_WITH_SRCIDX
 
             case Tag::Call: {

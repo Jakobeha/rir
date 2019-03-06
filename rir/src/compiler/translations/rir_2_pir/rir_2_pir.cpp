@@ -717,6 +717,7 @@ bool Rir2Pir::compileBC(const BC& bc, Opcode* pos, Opcode* nextPos,
         break;                                                                 \
     }
         UNOP_NOENV(Inc, inc_);
+        UNOP_NOENV(Inc, inc_int_);
 #undef UNOP_NOENV
 
     case Opcode::missing_:
@@ -817,6 +818,7 @@ bool Rir2Pir::compileBC(const BC& bc, Opcode* pos, Opcode* nextPos,
     case Opcode::static_call_:
     case Opcode::pop_context_:
     case Opcode::push_context_:
+    case Opcode::unbox_:
         log.unsupportedBC("Unsupported BC (are you recompiling?)", bc);
         assert(false && "Recompiling PIR not supported for now.");
 

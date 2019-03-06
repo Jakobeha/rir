@@ -484,9 +484,9 @@ RIR_INLINE bool trySetInPlace(SEXP old, R_bcstack_t val) {
 
 #define ostackEmpty(c) (R_BCNodeStackTop == R_BCNodeStackBase)
 
-#define ostackTop(c) *(R_BCNodeStackTop - 1)
+#define ostackTop(c) (*(R_BCNodeStackTop - 1))
 
-#define ostackAt(c, i) *(R_BCNodeStackTop - 1 - (i))
+#define ostackAt(c, i) (*(R_BCNodeStackTop - 1 - (i)))
 
 #define ostackCellAt(c, i) (R_BCNodeStackTop - 1 - (i))
 

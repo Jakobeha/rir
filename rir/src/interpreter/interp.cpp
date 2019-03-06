@@ -1469,14 +1469,19 @@ void deoptFramesWithContext(InterpreterInstance* ctx,
     // Dont end the outermost context (unless it was a fake one) to be able to
     // jump out below
     if (!outermostFrame || !originalCntxt) {
+        PROTECT(sysparent);
         res = sexpToStackObj(stackObjToSexp(res));
+        UNPROTECT(1);
         endClosureContext(cntxt, res.u.sxpval);
     }
 
     if (outermostFrame) {
         // long-jump out of all the inlined contexts
+        PROTECT(sysparent);
+        SEXP resSexp = stackObjToSexp(res);
+        UNPROTECT(1);
         Rf_findcontext(CTXT_BROWSER | CTXT_FUNCTION,
-                       nextFunctionContext()->cloenv, stackObjToSexp(res));
+                       nextFunctionContext()->cloenv, resSexp);
         assert(false);
     }
 
@@ -3525,6 +3530,23 @@ R_bcstack_t evalRirCode(Code* c, InterpreterInstance* ctx, SEXP env,
 
         INSTRUCTION(printInvocation_) {
             printf("Invocation count: %d\n", c->funInvocationCount);
+            NEXT();
+        }
+
+        INSTRUCTION(unbox_) {
+            if (ostackTop(ctx).tag == STACK_OBJ_SEXP) {
+                SEXP boxed = ostackPop(ctx).u.sxpval;
+                if (IS_SIMPLE_SCALAR(boxed, INTSXP)) {
+                    ostackPushInt(ctx, *INTEGER(boxed));
+                } else if (IS_SIMPLE_SCALAR(boxed, REALSXP)) {
+                    ostackPushReal(ctx, *REAL(boxed));
+                } else if (IS_SIMPLE_SCALAR(boxed, LGLSXP)) {
+                    ostackPushLogical(ctx, *LOGICAL(boxed));
+                } else {
+                    Rf_PrintValue(boxed);
+                    assert(false && "expected an unboxed value");
+                }
+            }
             NEXT();
         }
 

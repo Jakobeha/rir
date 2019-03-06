@@ -496,4 +496,9 @@ DEF_INSTR(record_binop_, 2, 2, 2, 0)
 DEF_INSTR(int3_, 0, 0, 0, 0)
 DEF_INSTR(printInvocation_, 0, 0, 0, 0)
 
+/**
+ * unbox_ :: requires top to be scalar, unboxes if boxed
+ */
+DEF_INSTR(unbox_, 0, 1, 1, 0)
+
 #undef DEF_INSTR

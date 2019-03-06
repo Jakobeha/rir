@@ -87,6 +87,7 @@ enum class TypeFlags : uint8_t {
     lazy,
     promiseWrapped,
     isScalar,
+    isBoxed,
     maybeObject,
     rtype,
 
@@ -125,10 +126,12 @@ struct PirType {
     Type t_;
 
     static FlagSet defaultRTypeFlags() {
-        return FlagSet() | TypeFlags::rtype | TypeFlags::maybeObject;
+        return FlagSet() | TypeFlags::rtype | TypeFlags::maybeObject |
+               TypeFlags::isBoxed;
     }
     static FlagSet optimisticRTypeFlags() {
-        return FlagSet() | TypeFlags::rtype | TypeFlags::isScalar;
+        return FlagSet() | TypeFlags::rtype | TypeFlags::isScalar |
+               TypeFlags::isBoxed;
     }
 
     static PirType optimistic() {
@@ -167,6 +170,9 @@ struct PirType {
     void merge(const ObservedValues& other);
     void merge(SEXPTYPE t);
 
+    static PirType unboxed(RType rtype) {
+        return PirType(rtype).scalar().unboxed();
+    }
     static PirType num() {
         return PirType(RType::logical) | RType::integer | RType::real |
                RType::cplx;
@@ -196,6 +202,9 @@ struct PirType {
     RIR_INLINE bool isScalar() const {
         return flags_.includes(TypeFlags::isScalar);
     }
+    RIR_INLINE bool isBoxed() const {
+        return flags_.includes(TypeFlags::isBoxed);
+    }
     RIR_INLINE bool isRType() const {
         return flags_.includes(TypeFlags::rtype);
     }
@@ -224,6 +233,21 @@ struct PirType {
         assert(isRType());
         PirType t = *this;
         t.flags_.set(TypeFlags::isScalar);
+        return t;
+    }
+
+    RIR_INLINE PirType boxed() const {
+        assert(isRType());
+        PirType t = *this;
+        t.flags_.set(TypeFlags::isBoxed);
+        return t;
+    }
+
+    RIR_INLINE PirType unboxed() const {
+        assert(isRType());
+        assert(isScalar());
+        PirType t = *this;
+        t.flags_.reset(TypeFlags::isBoxed);
         return t;
     }
 
@@ -258,6 +282,8 @@ struct PirType {
     RIR_INLINE void setNotMissing() { *this = notMissing(); }
     RIR_INLINE void setNotObject() { *this = notObject(); }
     RIR_INLINE void setScalar() { *this = scalar(); }
+    RIR_INLINE void setBoxed() { *this = boxed(); }
+    RIR_INLINE void setUnboxed() { *this = unboxed(); }
 
     static const PirType voyd() { return NativeTypeSet(); }
     static const PirType bottom() { return PirType(RTypeSet()); }
@@ -292,7 +318,7 @@ struct PirType {
     bool isA(const PirType& o) const { return o.isSuper(*this); }
 
     bool isSuper(const PirType& o) const {
-        if (isRType() != o.isRType()) {
+        if (isRType() != o.isRType() || isBoxed() != o.isBoxed()) {
             return false;
         }
         if (!isRType()) {
@@ -429,7 +455,9 @@ inline std::ostream& operator<<(std::ostream& out, PirType t) {
             out << ")";
     }
 
-    if (t.isScalar())
+    if (!t.isBoxed())
+        out << "#";
+    else if (t.isScalar())
         out << "$";
     if (t.maybeLazy())
         out << "^";
