@@ -2,6 +2,21 @@
 #error "DEF_INSTR must be defined before including insns.h"
 #endif
 
+#define DEF_INSTR_NATIVE(name, imm, pop, push, pure)                           \
+    DEF_INSTR(name, imm, pop, push, pure)                                      \
+    DEF_INSTR(name##int_, imm, pop, push, pure)                                \
+    DEF_INSTR(name##real_, imm, pop, push, pure)                               \
+    DEF_INSTR(name##lgl_, imm, pop, push, pure)
+
+#define DEF_INSTR_NATIVE_NUM(name, imm, pop, push, pure)                       \
+    DEF_INSTR(name, imm, pop, push, pure)                                      \
+    DEF_INSTR(name##int_, imm, pop, push, pure)                                \
+    DEF_INSTR(name##real_, imm, pop, push, pure)
+
+#define DEF_INSTR_NATIVE_LGL(name, imm, pop, push, pure)                       \
+    DEF_INSTR(name, imm, pop, push, pure)                                      \
+    DEF_INSTR(name##lgl_, imm, pop, push, pure)
+
 // DEF_INSTR(name, imm, pop, push, pure)
 
 /**
@@ -52,7 +67,7 @@ DEF_INSTR(ldfun_, 1, 0, 1, 0)
 /**
  * ldvar_:: take immediate CP index of symbol, finding binding in env and push.
  */
-DEF_INSTR(ldvar_, 1, 0, 1, 0)
+DEF_INSTR_NATIVE(ldvar_, 1, 0, 1, 0)
 
 /**
  * ldvar_noforce_:: like ldvar_ but don't force if promise or fail if missing
@@ -83,7 +98,7 @@ DEF_INSTR(ldlval_, 1, 0, 1, 1)
 /**
  * ldarg_:: load argument
  */
-DEF_INSTR(ldarg_, 1, 0, 1, 0)
+DEF_INSTR_NATIVE(ldarg_, 1, 0, 1, 0)
 
 /**
  * ldloc_:: push local variable on stack
@@ -93,12 +108,12 @@ DEF_INSTR(ldloc_, 1, 0, 1, 1)
 /**
  * stvar_:: assign tos to the immediate symbol
  */
-DEF_INSTR(starg_, 1, 1, 0, 0)
+DEF_INSTR_NATIVE(starg_, 1, 1, 0, 0)
 
 /**
  * stvar_:: assign tos to the immediate symbol
  */
-DEF_INSTR(stvar_, 1, 1, 0, 0)
+DEF_INSTR_NATIVE(stvar_, 1, 1, 0, 0)
 
 /**
  * stvar_super_:: assign tos to the immediate symbol, lookup starts in the
@@ -229,15 +244,6 @@ DEF_INSTR(pick_, 1, 0, 0, 1)
             element on stack and pushes it
  */
 DEF_INSTR(pull_, 1, 0, 1, 1)
-
-#define DEF_INSTR_NATIVE_NUM(name, imm, pop, push, pure)                       \
-    DEF_INSTR(name, imm, pop, push, pure)                                      \
-    DEF_INSTR(name##int_, imm, pop, push, pure)                                \
-    DEF_INSTR(name##real_, imm, pop, push, pure)
-
-#define DEF_INSTR_NATIVE_LGL(name, imm, pop, push, pure)                       \
-    DEF_INSTR(name, imm, pop, push, pure)                                      \
-    DEF_INSTR(name##lgl_, imm, pop, push, pure)
 
 /**
  * add_:: pop two values from object stack, add them, push result on object
