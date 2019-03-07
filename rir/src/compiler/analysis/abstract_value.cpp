@@ -11,9 +11,6 @@ AbstractPirValue::AbstractPirValue() : type(PirType::bottom()) {}
 AbstractPirValue::AbstractPirValue(Value* v, Instruction* o,
                                    unsigned recursionLevel)
     : type(v->type) {
-    std::cout << "created value with type: " << v->type << "\n";
-    o->print(std::cout, true);
-    std::cout << "\n";
     vals.insert(ValOrig(v, o, recursionLevel));
 }
 

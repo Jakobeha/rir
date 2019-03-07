@@ -20,6 +20,13 @@ class Closure;
     };
 
 /*
+ * Infer return types of functions, operations, and LdVar types.
+ * This is a mandatory pass, because before, every operation has the type
+ * "bottom".
+ */
+// class PASS(TypeInfer);
+
+/*
  * Uses scope analysis to get rid of as many `LdVar`'s as possible.
  *
  * Similar to llvm's mem2reg pass, we try to lift as many loads from the R
