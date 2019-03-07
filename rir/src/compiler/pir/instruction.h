@@ -574,10 +574,11 @@ class FLIE(LdVar, 1, Effect::Error, EnvAccess::Read) {
     SEXP varName;
 
     LdVar(const char* name, Value* env)
-        : FixedLenInstructionWithEnvSlot(PirType::any(), env),
+        : FixedLenInstructionWithEnvSlot(PirType::bottom(), env),
           varName(Rf_install(name)) {}
     LdVar(SEXP name, Value* env)
-        : FixedLenInstructionWithEnvSlot(PirType::any(), env), varName(name) {
+        : FixedLenInstructionWithEnvSlot(PirType::bottom(), env),
+          varName(name) {
         assert(TYPEOF(name) == SYMSXP);
     }
 

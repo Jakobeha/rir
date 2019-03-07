@@ -245,6 +245,12 @@ class TheScopeResolution {
                         }
                     }
 
+                    // Narrow the result type of i
+                    std::cout << "i->type: " << i->type
+                              << " vs. res->type: " << res.type << "\n";
+                    if (res.type.isA(i->type))
+                        i->type = res.type;
+
                     // If nothing else, narrow down the environment (in case we
                     // found something more concrete).
                     if (i->hasEnv() &&
