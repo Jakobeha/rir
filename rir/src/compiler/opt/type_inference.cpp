@@ -25,8 +25,16 @@ void TypeInference::apply(RirCompiler&, ClosureVersion* function,
             Instruction* i = *ip;
             auto next = ip + 1;
 
-            if (LdVar::Cast(i) || Add::Cast(i)) {
+            if (Add::Cast(i)) {
                 i->type = PirType::bottom();
+            }
+
+            if (LdVar::Cast(i)) {
+                if (i->type.maybePromiseWrapped()) {
+                    i->type = PirType::bottom().orPromiseWrapped();
+                } else {
+                    i->type = PirType::bottom();
+                }
             }
 
             /*auto before = analysis.at<ScopeAnalysis::BeforeInstruction>(i);
@@ -34,6 +42,19 @@ void TypeInference::apply(RirCompiler&, ClosureVersion* function,
 
             analysis.lookup(after, i, [&](const AbstractLoad& aLoad) {
                 auto& res = aLoad.result;
+
+                if (!res.isUnknown()) {
+
+                    res.print(std::cout);
+                    std::cout << "\n";
+                    bool notArg = res.checkEachSource([&](const ValOrig& src) {
+                        return !LdArg::Cast(src.val);
+                    });
+                    if (!notArg) {
+                        std::cout << ":)\n";
+                        i->type = i->type.orPromiseWrapped();
+                    }
+                }
                 // Narrow down type according to what the analysis reports
                 if (i->type.isRType()) {
                     auto inferedType = res.type;
