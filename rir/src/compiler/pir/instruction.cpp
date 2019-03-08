@@ -166,7 +166,7 @@ void Instruction::replaceUsesIn(Value* replace, BB* target) {
         replace->type.print(std::cerr);
         std::cerr << "\n";
         printBacktrace();
-        assert(false);
+        // assert(false);
     }
 
     Visitor::run(target, [&](Instruction* i) {

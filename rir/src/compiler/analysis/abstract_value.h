@@ -158,7 +158,13 @@ struct AbstractREnvironment {
     }
 
     void set(SEXP n, Value* v, Instruction* origin, unsigned recursionLevel) {
-        entries[n] = AbstractPirValue(v, origin, recursionLevel);
+        AbstractPirValue val = AbstractPirValue(v, origin, recursionLevel);
+        if (entries.count(n)) {
+            AbstractPirValue& existing = entries[n];
+            existing.merge(val);
+        } else {
+            entries[n] = val;
+        }
     }
 
     void print(std::ostream& out, bool tty = false) const;
