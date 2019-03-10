@@ -286,7 +286,9 @@ struct PirType {
     RIR_INLINE void setUnboxed() { *this = unboxed(); }
 
     static const PirType voyd() { return NativeTypeSet(); }
-    static const PirType bottom() { return PirType(RTypeSet()); }
+    static const PirType bottom() {
+        return PirType(RTypeSet()).notObject().scalar();
+    }
 
     RIR_INLINE PirType operator|(const PirType& o) const {
         assert(isRType() == o.isRType());
@@ -439,10 +441,12 @@ inline std::ostream& operator<<(std::ostream& out, PirType t) {
     }
 
     // If the base type is at least a value, then it's a value
-    if (t.isRType() && PirType::val() == t.baseType()) {
+    if (PirType::val() == t.baseType()) {
         out << "val?";
-    } else if (t.isRType() && PirType::val().notMissing() == t.baseType()) {
+    } else if (PirType::val().notMissing() == t.baseType()) {
         out << "val";
+    } else if (t.t_.r.empty()) {
+        out << "btm";
     } else {
         if (t.t_.r.count() > 1)
             out << "(";

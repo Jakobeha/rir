@@ -17,7 +17,14 @@ class Closure;
         name() : PirTranslator(#name){};                                       \
         void apply(RirCompiler&, ClosureVersion* function, LogStream& log)     \
             const final override;                                              \
-    };
+    }
+
+/*
+ * Infer return types of functions, operations, and LdVar types.
+ * This is a mandatory pass, because before, every operation has the type
+ * "bottom".
+ */
+class PASS(TypeInference);
 
 /*
  * Uses scope analysis to get rid of as many `LdVar`'s as possible.
@@ -35,7 +42,6 @@ class PASS(ScopeResolution);
  * can be removed.
  *
  */
-
 class PASS(ElideEnv);
 
 /*
@@ -81,10 +87,6 @@ class PASS(Inline);
  * environment reflectively and speculate it will not.
  */
 class PASS(ElideEnvSpec);
-
-/*
- *
- */
 
 /*
  * Constantfolding and dead branch removal.
