@@ -144,8 +144,12 @@ class TheScopeResolution {
                     // ends up being rather painful.
                     bool isActualLoad =
                         LdVar::Cast(i) || LdFun::Cast(i) || LdVarSuper::Cast(i);
+                    if (isActualLoad) {
+                        i->print(std::cout);
+                        std::cout << "\n";
+                    }
                     if (!res.isUnknown() && isActualLoad) {
-
+                        std::cout << "Good\n";
                         bool onlyLocalVals = true;
                         res.eachSource([&](const ValOrig& src) {
                             if (src.recursionLevel > 0)
@@ -153,6 +157,7 @@ class TheScopeResolution {
                         });
 
                         if (onlyLocalVals && !res.isUnknown()) {
+                            std::cout << "Great\n";
                             std::vector<BB*> inputs;
                             res.eachSource([&](ValOrig v) {
                                 if (auto i = Instruction::Cast(v.val))
@@ -160,6 +165,7 @@ class TheScopeResolution {
                             });
                             if (auto phiBlock =
                                     PhiPlacement::find(cfg, bb, inputs)) {
+                                std::cout << "Excellent\n";
                                 // Insert a new phi
                                 auto phi = new Phi;
                                 res.eachSource([&](const ValOrig& src) {
