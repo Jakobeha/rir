@@ -32,7 +32,7 @@ void TypeInference::apply(RirCompiler&, ClosureVersion* function,
                 // TODO: Move this into separate phase?
                 i->eachArg([&](InstrArg& arg) {
                     if (arg.val()->type.isA(PirType::unboxableNum()) &&
-                        !arg.val()->type.isBoxed()) {
+                        arg.val()->type.isBoxed()) {
                         auto unbox = new Unbox(arg.val());
                         ip = bb->insert(ip, unbox) + 1;
                         next = ip + 1;
