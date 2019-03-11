@@ -76,7 +76,7 @@ class TheCleanup {
                         todo.push_back(arg->prom());
                     }
                 } else if (SetShared::Cast(i) || EnsureNamed::Cast(i)) {
-                    if (i->unused()) {
+                    if (i->unused() || !i->arg(0).type().isBoxed()) {
                         removed = true;
                         next = bb->remove(ip);
                     } else {

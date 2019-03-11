@@ -916,6 +916,7 @@ size_t Pir2Rir::compileCode(Context& ctx, Code* code) {
                 SIMPLE(Inc, inc);
                 SIMPLE(Force, force);
                 SIMPLE(AsTest, asbool);
+                SIMPLE(Unbox, unbox);
                 SIMPLE(Length, length);
                 SIMPLE(ChkMissing, checkMissing);
                 SIMPLE(ChkClosure, isfun);
@@ -937,12 +938,14 @@ size_t Pir2Rir::compileCode(Context& ctx, Code* code) {
 #define SIMPLE_NATIVE_NUM(Name, Factory)                                       \
     case Tag::Name: {                                                          \
         auto op = Name::Cast(instr);                                           \
-        if (!op->anyArg([](const InstrArg& arg) {                              \
-                return !arg.type().isA(PirType::unboxed(RType::integer));      \
+        if (!op->anyArg([&](const InstrArg& arg) {                             \
+                return arg.val() != op->env() &&                               \
+                       !arg.type().isA(PirType::unboxed(RType::integer));      \
             })) {                                                              \
             cs << BC::Factory##_int();                                         \
-        } else if (!op->anyArg([](const InstrArg& arg) {                       \
-                       return !arg.type().isA(PirType::unboxed(RType::real));  \
+        } else if (!op->anyArg([&](const InstrArg& arg) {                      \
+                       return arg.val() != op->env() &&                        \
+                              !arg.type().isA(PirType::unboxed(RType::real));  \
                    })) {                                                       \
             cs << BC::Factory##_real();                                        \
         } else {                                                               \
@@ -956,8 +959,9 @@ size_t Pir2Rir::compileCode(Context& ctx, Code* code) {
 #define SIMPLE_NATIVE_LGL2(Name, Factory1, Factory2)                           \
     case Tag::Name: {                                                          \
         auto op = Name::Cast(instr);                                           \
-        if (!op->anyArg([](const InstrArg& arg) {                              \
-                return !arg.type().isA(PirType::unboxed(RType::logical));      \
+        if (!op->anyArg([&](const InstrArg& arg) {                             \
+                return arg.val() != op->env() &&                               \
+                       !arg.type().isA(PirType::unboxed(RType::logical));      \
             })) {                                                              \
             cs << BC::Factory1##_lgl();                                        \
         } else {                                                               \

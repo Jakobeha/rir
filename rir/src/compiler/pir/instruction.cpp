@@ -166,17 +166,13 @@ void Instruction::replaceUsesIn(Value* replace, BB* target) {
         replace->type.print(std::cerr);
         std::cerr << "\n";
         printBacktrace();
-        // assert(false);
+        assert(false);
     }
 
     Visitor::run(target, [&](Instruction* i) {
         i->eachArg([&](InstrArg& arg) {
             if (arg.val() == this) {
                 arg.val() = replace;
-                // TODO: will this ever be wrong?
-                if (arg.type().isA(replace->type)) {
-                    arg.type() = replace->type;
-                }
             }
         });
     });
@@ -217,6 +213,8 @@ bool Instruction::usesDoNotInclude(BB* target, std::unordered_set<Tag> tags) {
     });
     return answer;
 }
+
+void Instruction::setType(PirType newType, BB* parent) { type = newType; }
 
 const Value* Instruction::cFollowCasts() const {
     if (auto cast = CastType::Cast(this))

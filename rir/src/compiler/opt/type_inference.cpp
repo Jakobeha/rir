@@ -27,13 +27,26 @@ void TypeInference::apply(RirCompiler&, ClosureVersion* function,
 
             if (Add::Cast(i)) {
                 i->type = PirType::bottom();
+
+                // Unbox arguments if they're boxed scalars
+                // TODO: Move this into separate phase?
+                i->eachArg([&](InstrArg& arg) {
+                    if (arg.val()->type.isA(PirType::unboxableNum()) &&
+                        !arg.val()->type.isBoxed()) {
+                        auto unbox = new Unbox(arg.val());
+                        ip = bb->insert(ip, unbox) + 1;
+                        next = ip + 1;
+                        arg.val() = unbox;
+                        arg.type() = arg.val()->type.unboxed();
+                    }
+                });
             }
 
             if (LdVar::Cast(i)) {
                 if (i->type.maybePromiseWrapped()) {
-                    i->type = PirType::bottom().orPromiseWrapped();
+                    i->type = PirType::bottom().boxed().orPromiseWrapped();
                 } else {
-                    i->type = PirType::bottom();
+                    i->type = PirType::bottom().boxed();
                 }
             }
 

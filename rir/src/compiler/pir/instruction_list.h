@@ -49,6 +49,7 @@
     V(Phi)                                                                     \
     V(AsLogical)                                                               \
     V(AsTest)                                                                  \
+    V(Unbox)                                                                   \
     V(IsObject)                                                                \
     V(IsEnvStub)                                                               \
     V(Return)                                                                  \

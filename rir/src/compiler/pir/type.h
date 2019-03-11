@@ -173,6 +173,9 @@ struct PirType {
     static PirType unboxed(RType rtype) {
         return PirType(rtype).scalar().unboxed();
     }
+    static PirType unboxableNum() {
+        return PirType(RType::integer).scalar() | RType::real;
+    }
     static PirType num() {
         return PirType(RType::logical) | RType::integer | RType::real |
                RType::cplx;
@@ -287,7 +290,7 @@ struct PirType {
 
     static const PirType voyd() { return NativeTypeSet(); }
     static const PirType bottom() {
-        return PirType(RTypeSet()).notObject().scalar();
+        return PirType(RTypeSet()).notObject().scalar().unboxed();
     }
 
     RIR_INLINE PirType operator|(const PirType& o) const {
@@ -320,7 +323,7 @@ struct PirType {
     bool isA(const PirType& o) const { return o.isSuper(*this); }
 
     bool isSuper(const PirType& o) const {
-        if (isRType() != o.isRType() || isBoxed() != o.isBoxed()) {
+        if (isRType() != o.isRType()) {
             return false;
         }
         if (!isRType()) {
@@ -328,7 +331,7 @@ struct PirType {
         }
         if ((!maybeLazy() && o.maybeLazy()) ||
             (!maybePromiseWrapped() && o.maybePromiseWrapped()) ||
-            (isScalar() && !o.isScalar())) {
+            (!isBoxed() && o.isBoxed()) || (isScalar() && !o.isScalar())) {
             return false;
         }
         return t_.r.includes(o.t_.r);

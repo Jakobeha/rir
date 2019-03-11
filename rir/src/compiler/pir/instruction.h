@@ -805,6 +805,12 @@ class FLI(AsTest, 1, Effect::Error, EnvAccess::None) {
         : FixedLenInstruction(NativeType::test, {{PirType::val()}}, {{in}}) {}
 };
 
+class FLI(Unbox, 1, Effect::None, EnvAccess::None) {
+  public:
+    explicit Unbox(Value* in)
+        : FixedLenInstruction(in->type.unboxed(), {{in->type}}, {{in}}) {}
+};
+
 class FLIE(Subassign1_1D, 4, Effect::None, EnvAccess::Leak) {
   public:
     Subassign1_1D(Value* val, Value* vec, Value* idx, Value* env,
