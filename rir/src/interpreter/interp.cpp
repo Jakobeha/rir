@@ -1636,12 +1636,12 @@ R_bcstack_t evalRirCode(Code* c, InterpreterInstance* ctx, SEXP env,
             int contextPos = readSignedImmediate();
             advanceImmediate();
             R_bcstack_t parent = ostackPop(ctx);
+            PROTECT(parent.u.sxpval);
             SLOWASSERT(stackObjSexpType(parent) == ENVSXP &&
                        "Non-environment used as environment parent.");
             SEXP arglist = R_NilValue;
             auto names = (Immediate*)pc;
             advanceImmediateN(n);
-            PROTECT(parent.u.sxpval);
             for (long i = n - 1; i >= 0; --i) {
                 PROTECT(arglist);
                 SEXP val = ostackPopSexp(ctx);
@@ -1651,7 +1651,6 @@ R_bcstack_t evalRirCode(Code* c, InterpreterInstance* ctx, SEXP env,
                 SET_TAG(arglist, name);
                 SET_MISSING(arglist, val == R_MissingArg ? 2 : 0);
             }
-            UNPROTECT(1);
             SEXP res = Rf_NewEnvironment(R_NilValue, arglist, parent.u.sxpval);
 
             if (contextPos > 0) {
@@ -1663,6 +1662,7 @@ R_bcstack_t evalRirCode(Code* c, InterpreterInstance* ctx, SEXP env,
             }
 
             ostackPushSexp(ctx, res);
+            UNPROTECT(1);
             NEXT();
         }
 

@@ -214,8 +214,6 @@ bool Instruction::usesDoNotInclude(BB* target, std::unordered_set<Tag> tags) {
     return answer;
 }
 
-void Instruction::setType(PirType newType, BB* parent) { type = newType; }
-
 const Value* Instruction::cFollowCasts() const {
     if (auto cast = CastType::Cast(this))
         return cast->arg<0>().val()->followCasts();

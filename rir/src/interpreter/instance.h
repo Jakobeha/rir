@@ -339,6 +339,21 @@ RIR_INLINE int tryStackObjToIdx(R_bcstack_t x) {
     }
 }
 
+RIR_INLINE R_bcstack_t coerceStackObjToIntVector(R_bcstack_t x) {
+    switch (x.tag) {
+    case STACK_OBJ_INT:
+        return x;
+    case STACK_OBJ_REAL:
+        return intStackObj((int)x.u.dval);
+    case STACK_OBJ_LOGICAL:
+        return intStackObj(x.u.ival);
+    case STACK_OBJ_SEXP:
+        return sexpToStackObj(coerceVector(x.u.sxpval, INTSXP));
+    default:
+        assert(false);
+    }
+}
+
 RIR_INLINE SEXPTYPE stackObjSexpType(R_bcstack_t x) {
     switch (x.tag) {
     case STACK_OBJ_INT:
