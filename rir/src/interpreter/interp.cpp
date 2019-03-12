@@ -2257,6 +2257,27 @@ R_bcstack_t evalRirCode(Code* c, InterpreterInstance* ctx, SEXP env,
             NEXT();
         }
 
+        INSTRUCTION(push_int_) {
+            int res = *(int*)pc;
+            pc += sizeof(int);
+            ostackPushInt(ctx, res);
+            NEXT();
+        }
+
+        INSTRUCTION(push_real_) {
+            double res = *(double*)pc;
+            pc += sizeof(double);
+            ostackPushReal(ctx, res);
+            NEXT();
+        }
+
+        INSTRUCTION(push_lgl_) {
+            int res = *(int*)pc;
+            pc += sizeof(int);
+            ostackPushLogical(ctx, res);
+            NEXT();
+        }
+
         INSTRUCTION(push_code_) {
             Immediate n = readImmediate();
             advanceImmediate();

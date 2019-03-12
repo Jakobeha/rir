@@ -54,6 +54,18 @@ BC_NOARGS(V, _)
         cs.insert(immediate.pool);
         return;
 
+    case Opcode::push_int_:
+        cs.insert(immediate.unboxedInt);
+        return;
+
+    case Opcode::push_real_:
+        cs.insert(immediate.unboxedReal);
+        return;
+
+    case Opcode::push_lgl_:
+        cs.insert(immediate.unboxedLgl);
+        return;
+
     case Opcode::guard_fun_:
         cs.insert(immediate.guard_fun_args);
         return;
@@ -235,6 +247,23 @@ void BC::print(std::ostream& out) const {
     case Opcode::push_:
         out << dumpSexp(immediateConst()).c_str();
         break;
+    case Opcode::push_int_:
+        out << immediate.unboxedInt;
+        break;
+    case Opcode::push_real_:
+        out << immediate.unboxedReal;
+        break;
+    case Opcode::push_lgl_: {
+        int lgl = immediate.unboxedLgl;
+        if (lgl == NA_LOGICAL) {
+            out << "NA";
+        } else if (lgl) {
+            out << "TRUE";
+        } else {
+            out << "FALSE";
+        }
+        break;
+    }
     case Opcode::ldfun_:
     case NATIVE(ldvar_):
     case Opcode::ldvar_noforce_:

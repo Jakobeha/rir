@@ -47,13 +47,23 @@ BC BC::push(SEXP constant) {
 }
 BC BC::push(double constant) {
     ImmediateArguments i;
-    i.pool = Pool::getNum(constant);
-    return BC(Opcode::push_, i);
+    i.unboxedReal = constant;
+    return BC(Opcode::push_real_, i);
 }
-BC BC::push(int constant) {
+BC BC::push(int constant, bool isLogical) {
     ImmediateArguments i;
-    i.pool = Pool::getInt(constant);
-    return BC(Opcode::push_, i);
+    if (isLogical) {
+        i.unboxedLgl = (int)constant;
+        return BC(Opcode::push_lgl_, i);
+    } else {
+        i.unboxedInt = constant;
+        return BC(Opcode::push_int_, i);
+    }
+}
+BC BC::push(bool constant) {
+    ImmediateArguments i;
+    i.unboxedLgl = (int)constant;
+    return BC(Opcode::push_lgl_, i);
 }
 BC BC::push_from_pool(PoolIdx idx) {
     ImmediateArguments i;

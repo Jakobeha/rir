@@ -203,6 +203,13 @@ DEF_INSTR(force_, 0, 1, 1, 0)
  */
 DEF_INSTR(push_, 1, 0, 1, 1)
 
+/*
+ * push_<native>_ :: take immediate value and push unboxed onto the stack.
+ */
+DEF_INSTR(push_int_, sizeof(int) / sizeof(Immediate), 0, 1, 1)
+DEF_INSTR(push_real_, sizeof(double) / sizeof(Immediate), 0, 1, 1)
+DEF_INSTR(push_lgl_, sizeof(int) / sizeof(Immediate), 0, 1, 1)
+
 /**
  * push_code_:: take immediate code object index, and push code object onto obj
  * stack

@@ -83,8 +83,12 @@ PirType::PirType(SEXP e) : flags_(defaultRTypeFlags()), t_(RTypeSet()) {
     }
 
     if (PirType::vecs().isSuper(*this)) {
-        if (Rf_length(e) == 1)
+        if (Rf_length(e) == 1) {
             flags_.set(TypeFlags::isScalar);
+            if (ATTRIB(e) == R_NilValue) { // TODO: Unsure
+                flags_.reset(TypeFlags::isBoxed);
+            }
+        }
     }
 }
 

@@ -113,7 +113,7 @@ static Sources hasSources(Opcode bc) {
     case Opcode::inc_:
     case Opcode::inc_int_:
     case Opcode::identical_noforce_:
-    case Opcode::push_:
+    case NATIVE(push_):
     case Opcode::ldfun_:
     case Opcode::ldddvar_:
     case NATIVE(ldvar_):

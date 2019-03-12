@@ -787,7 +787,17 @@ size_t Pir2Rir::compileCode(Context& ctx, Code* code) {
             switch (instr->tag) {
 
             case Tag::LdConst: {
-                cs << BC::push_from_pool(LdConst::Cast(instr)->idx);
+                LdConst* ldconst = LdConst::Cast(instr);
+                SEXP val = ldconst->c();
+                if (IS_SIMPLE_SCALAR(val, INTSXP)) {
+                    cs << BC::push(*INTEGER(val));
+                } else if (IS_SIMPLE_SCALAR(val, REALSXP)) {
+                    cs << BC::push(*REAL(val));
+                } else if (IS_SIMPLE_SCALAR(val, LGLSXP)) {
+                    cs << BC::push(*LOGICAL(val), true);
+                } else {
+                    cs << BC::push_from_pool(ldconst->idx);
+                }
                 break;
             }
 

@@ -131,6 +131,9 @@ class BC {
         CallBuiltinFixedArgs callBuiltinFixedArgs;
         GuardFunArgs guard_fun_args;
         PoolIdx pool;
+        double unboxedReal;
+        int unboxedInt;
+        int unboxedLgl;
         FunIdx fun;
         ArgIdx arg_idx;
         Jmp offset;
@@ -333,7 +336,8 @@ BC_NOARGS(V, _)
     inline static BC recordBinop();
     inline static BC push(SEXP constant);
     inline static BC push(double constant);
-    inline static BC push(int constant);
+    inline static BC push(int constant, bool isLogical = false);
+    inline static BC push(bool constant);
     inline static BC push_from_pool(PoolIdx idx);
     inline static BC push_code(FunIdx i);
     inline static BC ldfun(SEXP sym);
@@ -613,6 +617,13 @@ BC_NOARGS(V, _)
         case Opcode::stvar_super_:
         case Opcode::missing_:
             memcpy(&immediate.pool, pc, sizeof(PoolIdx));
+            break;
+        case Opcode::push_int_:
+        case Opcode::push_lgl_:
+            memcpy(&immediate.pool, pc, sizeof(int));
+            break;
+        case Opcode::push_real_:
+            memcpy(&immediate.pool, pc, sizeof(double));
             break;
         case Opcode::call_implicit_:
         case Opcode::named_call_implicit_:

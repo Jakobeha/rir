@@ -200,6 +200,24 @@ bool Rir2Pir::compileBC(const BC& bc, Opcode* pos, Opcode* nextPos,
         push(insert(new LdConst(bc.immediateConst())));
         break;
 
+    case Opcode::push_int_: {
+        SEXP val = Pool::get(Pool::getInt(bc.immediate.unboxedInt));
+        push(insert(new LdConst(val, PirType::unboxed(RType::integer))));
+        break;
+    }
+
+    case Opcode::push_real_: {
+        SEXP val = Pool::get(Pool::getNum(bc.immediate.unboxedReal));
+        push(insert(new LdConst(val, PirType::unboxed(RType::real))));
+        break;
+    }
+
+    case Opcode::push_lgl_: {
+        SEXP val = Pool::get(Pool::getInt(bc.immediate.unboxedLgl));
+        push(insert(new LdConst(val, PirType::unboxed(RType::logical))));
+        break;
+    }
+
     case Opcode::ldvar_:
         v = insert(new LdVar(bc.immediateConst(), env));
         push(insert(new Force(v, env)));
