@@ -799,14 +799,11 @@ size_t Pir2Rir::compileCode(Context& ctx, Code* code) {
 
             case Tag::LdVar: {
                 auto ldvar = LdVar::Cast(instr);
-                if (ldvar->type.isA(
-                        PirType(RType::integer).scalar().unboxed())) {
+                if (ldvar->type.isA(PirType::unboxed(RType::integer))) {
                     cs << BC::ldvar_int(ldvar->varName);
-                } else if (ldvar->type.isA(
-                               PirType(RType::real).scalar().unboxed())) {
+                } else if (ldvar->type.isA(PirType::unboxed(RType::real))) {
                     cs << BC::ldvar_real(ldvar->varName);
-                } else if (ldvar->type.isA(
-                               PirType(RType::logical).scalar().unboxed())) {
+                } else if (ldvar->type.isA(PirType::unboxed(RType::logical))) {
                     cs << BC::ldvar_lgl(ldvar->varName);
                 } else {
                     cs << BC::ldvarNoForce(ldvar->varName);
@@ -843,10 +840,33 @@ size_t Pir2Rir::compileCode(Context& ctx, Code* code) {
 
             case Tag::StVar: {
                 auto stvar = StVar::Cast(instr);
-                if (stvar->isStArg)
-                    cs << BC::starg(stvar->varName);
-                else
-                    cs << BC::stvar(stvar->varName);
+                if (stvar->isStArg) {
+                    if (stvar->val()->type.isA(
+                            PirType::unboxed(RType::integer))) {
+                        cs << BC::starg_int(stvar->varName);
+                    } else if (stvar->val()->type.isA(
+                                   PirType::unboxed(RType::real))) {
+                        cs << BC::starg_real(stvar->varName);
+                    } else if (stvar->val()->type.isA(
+                                   PirType::unboxed(RType::logical))) {
+                        cs << BC::starg_lgl(stvar->varName);
+                    } else {
+                        cs << BC::starg(stvar->varName);
+                    }
+                } else {
+                    if (stvar->val()->type.isA(
+                            PirType::unboxed(RType::integer))) {
+                        cs << BC::stvar_int(stvar->varName);
+                    } else if (stvar->val()->type.isA(
+                                   PirType::unboxed(RType::real))) {
+                        cs << BC::stvar_real(stvar->varName);
+                    } else if (stvar->val()->type.isA(
+                                   PirType::unboxed(RType::logical))) {
+                        cs << BC::stvar_lgl(stvar->varName);
+                    } else {
+                        cs << BC::stvar(stvar->varName);
+                    }
+                }
                 break;
             }
 
