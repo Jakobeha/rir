@@ -42,6 +42,13 @@ class TheCleanup {
                         force->replaceUsesWith(arg);
                         next = bb->remove(ip);
                     }
+                } else if (auto unbox = Unbox::Cast(i)) {
+                    Value* arg = unbox->input();
+                    if (!arg->type.isBoxed()) {
+                        removed = true;
+                        unbox->replaceUsesWith(arg);
+                        next = bb->remove(ip);
+                    }
                 } else if (auto chkcls = ChkClosure::Cast(i)) {
                     Value* arg = chkcls->arg<0>().val();
                     if (arg->type.isA(RType::closure)) {

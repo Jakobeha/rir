@@ -232,6 +232,13 @@ struct PirType {
         return t;
     }
 
+    PirType orMissing() const {
+        assert(isRType());
+        PirType t = *this;
+        t.t_.r.set(RType::missing);
+        return t;
+    }
+
     RIR_INLINE PirType scalar() const {
         assert(isRType());
         PirType t = *this;

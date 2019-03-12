@@ -783,7 +783,15 @@ class FLIE(Force, 2, Effect::Any, EnvAccess::Leak) {
     Value* input() const { return arg(0).val(); }
     const char* name() const override { return strict ? "Force!" : "Force"; }
     bool hasEffect() const override final { return input()->type.maybeLazy(); }
-    void updateType() override final { type = arg<0>().val()->type.forced(); }
+    void updateType() override final { type = input()->type.forced(); }
+};
+
+class FLI(Unbox, 1, Effect::None, EnvAccess::None) {
+  public:
+    explicit Unbox(Value* in)
+        : FixedLenInstruction(in->type.unboxed(), {{PirType::val()}}, {{in}}) {}
+    Value* input() const { return arg<0>().val(); }
+    void updateType() override final { type = input()->type.unboxed(); }
 };
 
 class FLI(CastType, 1, Effect::None, EnvAccess::None) {
@@ -803,12 +811,6 @@ class FLI(AsTest, 1, Effect::Error, EnvAccess::None) {
   public:
     explicit AsTest(Value* in)
         : FixedLenInstruction(NativeType::test, {{PirType::val()}}, {{in}}) {}
-};
-
-class FLI(Unbox, 1, Effect::None, EnvAccess::None) {
-  public:
-    explicit Unbox(Value* in)
-        : FixedLenInstruction(in->type.unboxed(), {{in->type}}, {{in}}) {}
 };
 
 class FLIE(Subassign1_1D, 4, Effect::None, EnvAccess::Leak) {

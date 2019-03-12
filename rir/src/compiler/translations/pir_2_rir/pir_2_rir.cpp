@@ -799,7 +799,18 @@ size_t Pir2Rir::compileCode(Context& ctx, Code* code) {
 
             case Tag::LdVar: {
                 auto ldvar = LdVar::Cast(instr);
-                cs << BC::ldvarNoForce(ldvar->varName);
+                if (ldvar->type.isA(
+                        PirType(RType::integer).scalar().unboxed())) {
+                    cs << BC::ldvar_int(ldvar->varName);
+                } else if (ldvar->type.isA(
+                               PirType(RType::real).scalar().unboxed())) {
+                    cs << BC::ldvar_real(ldvar->varName);
+                } else if (ldvar->type.isA(
+                               PirType(RType::logical).scalar().unboxed())) {
+                    cs << BC::ldvar_lgl(ldvar->varName);
+                } else {
+                    cs << BC::ldvarNoForce(ldvar->varName);
+                }
                 break;
             }
 

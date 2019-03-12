@@ -105,7 +105,7 @@ class ScopeAnalysisState {
 };
 
 class ScopeAnalysis : public StaticAnalysis<
-                          ScopeAnalysisState /*, AnalysisDebugLevel::Taint */> {
+                          ScopeAnalysisState /*, AnalysisDebugLevel::Taint*/> {
   private:
     const std::vector<Value*> args;
 

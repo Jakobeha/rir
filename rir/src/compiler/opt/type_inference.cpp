@@ -26,7 +26,7 @@ void TypeInference::apply(RirCompiler&, ClosureVersion* function,
             auto next = ip + 1;
 
             if (Add::Cast(i)) {
-                i->type = PirType::bottom();
+                i->type = PirType(RType::real).notObject().scalar().unboxed();
 
                 // Unbox arguments if they're boxed scalars
                 // TODO: Move this into separate phase?
@@ -43,11 +43,15 @@ void TypeInference::apply(RirCompiler&, ClosureVersion* function,
             }
 
             if (LdVar::Cast(i)) {
-                if (i->type.maybePromiseWrapped()) {
-                    i->type = PirType::bottom().boxed().orPromiseWrapped();
-                } else {
-                    i->type = PirType::bottom().boxed();
+                PirType type =
+                    PirType(RType::real).notObject().scalar().unboxed();
+                if (i->type.maybeMissing()) {
+                    type = type.boxed().orMissing();
                 }
+                if (i->type.maybePromiseWrapped()) {
+                    type = type.boxed().orPromiseWrapped();
+                }
+                i->type = type;
             }
 
             /*auto before = analysis.at<ScopeAnalysis::BeforeInstruction>(i);
