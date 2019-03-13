@@ -37,7 +37,23 @@ void TypeInference::apply(RirCompiler&, ClosureVersion* function,
                         ip = bb->insert(ip, unbox) + 1;
                         next = ip + 1;
                         arg.val() = unbox;
-                        arg.type() = arg.val()->type.unboxed();
+                    }
+                });
+            }
+
+            if (Lt::Cast(i)) {
+                i->type =
+                    PirType(RType::logical).notObject().scalar().unboxed();
+
+                // Unbox arguments if they're boxed scalars
+                // TODO: Move this into separate phase?
+                i->eachArg([&](InstrArg& arg) {
+                    if (arg.val()->type.isA(PirType::unboxableNum()) &&
+                        arg.val()->type.isBoxed()) {
+                        auto unbox = new Unbox(arg.val());
+                        ip = bb->insert(ip, unbox) + 1;
+                        next = ip + 1;
+                        arg.val() = unbox;
                     }
                 });
             }

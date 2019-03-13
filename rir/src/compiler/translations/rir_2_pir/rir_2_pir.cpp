@@ -668,23 +668,21 @@ bool Rir2Pir::compileBC(const BC& bc, Opcode* pos, Opcode* nextPos,
         push(insert(new Name(lhs, rhs, env, srcIdx)));                         \
         break;                                                                 \
     }
-
         // Currently, if PIR ever were to recompile a native opcode, it would
         // simply forget the information and "rediscover" it.
-
+#define BINOP_NATIVE(Name, Op)                                                 \
+    BINOP(Name, Op);                                                           \
+    BINOP(Name, Op##int_);                                                     \
+    BINOP(Name, Op##real_);                                                    \
+    BINOP(Name, Op##lgl_);
 #define BINOP_NATIVE_NUM(Name, Op)                                             \
     BINOP(Name, Op);                                                           \
     BINOP(Name, Op##int_);                                                     \
     BINOP(Name, Op##real_);
-
-#define BINOP_NATIVE_LGL(Name, Op)                                             \
-    BINOP(Name, Op);                                                           \
-    BINOP(Name, Op##lgl_);
-
-        BINOP_NATIVE_LGL(Lt, lt_);
-        BINOP_NATIVE_LGL(Gt, gt_);
-        BINOP_NATIVE_LGL(Gte, le_);
-        BINOP_NATIVE_LGL(Lte, ge_);
+        BINOP_NATIVE(Lt, lt_);
+        BINOP_NATIVE(Gt, gt_);
+        BINOP_NATIVE(Gte, le_);
+        BINOP_NATIVE(Lte, ge_);
         BINOP_NATIVE_NUM(Mod, mod_);
         BINOP_NATIVE_NUM(Div, div_);
         BINOP_NATIVE_NUM(IDiv, idiv_);
@@ -693,10 +691,10 @@ bool Rir2Pir::compileBC(const BC& bc, Opcode* pos, Opcode* nextPos,
         BINOP(Colon, colon_);
         BINOP(Pow, pow_);
         BINOP_NATIVE_NUM(Sub, sub_);
-        BINOP_NATIVE_LGL(Eq, eq_);
-        BINOP_NATIVE_LGL(Neq, ne_);
-#undef BINOP_NATIVE_LGL
+        BINOP_NATIVE(Eq, eq_);
+        BINOP_NATIVE(Neq, ne_);
 #undef BINOP_NATIVE_NUM
+#undef BINOP_NATIVE
 #undef BINOP
 
     case Opcode::identical_noforce_: {
@@ -712,20 +710,21 @@ bool Rir2Pir::compileBC(const BC& bc, Opcode* pos, Opcode* nextPos,
         push(insert(new Name(v, env, srcIdx)));                                \
         break;                                                                 \
     }
-
+#define UNOP_NATIVE(Name, Op)                                                  \
+    UNOP(Name, Op);                                                            \
+    UNOP(Name, Op##int_);                                                      \
+    UNOP(Name, Op##real_);                                                     \
+    UNOP(Name, Op##lgl_);
 #define UNOP_NATIVE_NUM(Name, Op)                                              \
     UNOP(Name, Op);                                                            \
     UNOP(Name, Op##int_);                                                      \
     UNOP(Name, Op##real_);
-
-#define UNOP_NATIVE_LGL(Name, Op)                                              \
-    UNOP(Name, Op);                                                            \
-    UNOP(Name, Op##lgl_);
-
         UNOP_NATIVE_NUM(Plus, uplus_);
         UNOP_NATIVE_NUM(Minus, uminus_);
-        UNOP_NATIVE_LGL(Not, not_);
+        UNOP_NATIVE(Not, not_);
         UNOP(Length, length_);
+#undef UNOP_NATIVE_NUM
+#undef UNOP_NATIVE
 #undef UNOP
 
 #define UNOP_NOENV(Name, Op)                                                   \

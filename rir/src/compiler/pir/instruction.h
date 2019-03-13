@@ -697,8 +697,7 @@ class Branch
                                  EnvAccess::None, Controlflow::Branch> {
   public:
     explicit Branch(Value* test)
-        : FixedLenInstruction(PirType::voyd(), {{NativeType::test}}, {{test}}) {
-    }
+        : FixedLenInstruction(PirType::voyd(), {{PirType::test()}}, {{test}}) {}
     void printArgs(std::ostream& out, bool tty) const override;
 };
 
@@ -810,7 +809,7 @@ class FLI(AsLogical, 1, Effect::Warn, EnvAccess::None) {
 class FLI(AsTest, 1, Effect::Error, EnvAccess::None) {
   public:
     explicit AsTest(Value* in)
-        : FixedLenInstruction(NativeType::test, {{PirType::val()}}, {{in}}) {}
+        : FixedLenInstruction(PirType::test(), {{PirType::val()}}, {{in}}) {}
 };
 
 class FLIE(Subassign1_1D, 4, Effect::None, EnvAccess::Leak) {
@@ -970,7 +969,7 @@ class FLI(Nop, 0, Effect::Any, EnvAccess::None) {
 class FLI(Identical, 2, Effect::None, EnvAccess::None) {
   public:
     Identical(Value* a, Value* b)
-        : FixedLenInstruction(NativeType::test,
+        : FixedLenInstruction(PirType::test(),
                               {{PirType::any(), PirType::any()}}, {{a, b}}) {}
 };
 
@@ -1355,13 +1354,13 @@ class VLIE(MkEnv, Effect::None, EnvAccess::Capture) {
 class FLI(IsObject, 1, Effect::None, EnvAccess::None) {
   public:
     explicit IsObject(Value* v)
-        : FixedLenInstruction(NativeType::test, {{PirType::val()}}, {{v}}) {}
+        : FixedLenInstruction(PirType::test(), {{PirType::val()}}, {{v}}) {}
 };
 
 class FLIE(IsEnvStub, 1, Effect::None, EnvAccess::Capture) {
   public:
     explicit IsEnvStub(MkEnv* e)
-        : FixedLenInstructionWithEnvSlot(NativeType::test, e) {}
+        : FixedLenInstructionWithEnvSlot(PirType::test(), e) {}
 };
 
 class FLIE(PushContext, 3, Effect::Any, EnvAccess::Capture) {
@@ -1463,7 +1462,7 @@ class FLI(Assume, 2, Effect::Order, EnvAccess::None) {
     bool assumeTrue = true;
     Assume(Value* test, Value* checkpoint)
         : FixedLenInstruction(PirType::voyd(),
-                              {{NativeType::test, NativeType::checkpoint}},
+                              {{PirType::test(), NativeType::checkpoint}},
                               {{test, checkpoint}}) {}
 
     Checkpoint* checkpoint() { return Checkpoint::Cast(arg(1).val()); }

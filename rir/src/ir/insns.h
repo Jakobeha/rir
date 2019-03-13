@@ -13,10 +13,6 @@
     DEF_INSTR(name##int_, imm, pop, push, pure)                                \
     DEF_INSTR(name##real_, imm, pop, push, pure)
 
-#define DEF_INSTR_NATIVE_LGL(name, imm, pop, push, pure)                       \
-    DEF_INSTR(name, imm, pop, push, pure)                                      \
-    DEF_INSTR(name##lgl_, imm, pop, push, pure)
-
 // DEF_INSTR(name, imm, pop, push, pure)
 
 /**
@@ -281,19 +277,19 @@ DEF_INSTR(pow_, 0, 2, 1, 0)
 /**
  * lt_:: relational operator <
  */
-DEF_INSTR_NATIVE_LGL(lt_, 0, 2, 1, 0)
-DEF_INSTR_NATIVE_LGL(gt_, 0, 2, 1, 0)
-DEF_INSTR_NATIVE_LGL(le_, 0, 2, 1, 0)
-DEF_INSTR_NATIVE_LGL(ge_, 0, 2, 1, 0)
-DEF_INSTR_NATIVE_LGL(eq_, 0, 2, 1, 0)
-DEF_INSTR_NATIVE_LGL(ne_, 0, 2, 1, 0)
+DEF_INSTR_NATIVE(lt_, 0, 2, 1, 0)
+DEF_INSTR_NATIVE(gt_, 0, 2, 1, 0)
+DEF_INSTR_NATIVE(le_, 0, 2, 1, 0)
+DEF_INSTR_NATIVE(ge_, 0, 2, 1, 0)
+DEF_INSTR_NATIVE(eq_, 0, 2, 1, 0)
+DEF_INSTR_NATIVE(ne_, 0, 2, 1, 0)
 
 DEF_INSTR(identical_noforce_, 0, 2, 1, 0)
 
 /**
  * not_:: unary negation operator !
  */
-DEF_INSTR_NATIVE_LGL(not_, 0, 1, 1, 0)
+DEF_INSTR_NATIVE(not_, 0, 1, 1, 0)
 
 /**
  * lgl_or_:: computes the logical (ternary) or of the two tos vals
@@ -514,4 +510,6 @@ DEF_INSTR(printInvocation_, 0, 0, 0, 0)
  */
 DEF_INSTR(unbox_, 0, 1, 1, 0)
 
+#undef DEF_INSTR_NATIVE_NUM
+#undef DEF_INSTR_NATIVE
 #undef DEF_INSTR

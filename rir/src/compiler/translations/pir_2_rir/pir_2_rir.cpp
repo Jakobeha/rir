@@ -976,37 +976,47 @@ size_t Pir2Rir::compileCode(Context& ctx, Code* code) {
         cs.addSrcIdx(instr->srcIdx);                                           \
         break;                                                                 \
     }
-#define SIMPLE_NATIVE_NUM(Name, Factory)                                       \
+#define SIMPLE_NATIVE(Name, Factory) SIMPLE_NATIVE2(Name, Factory, Factory)
+#define SIMPLE_NATIVE2(Name, Factory1, Factory2)                               \
     case Tag::Name: {                                                          \
         auto op = Name::Cast(instr);                                           \
-        if (!op->anyArg([&](const InstrArg& arg) {                             \
-                return arg.val() != op->env() &&                               \
-                       !arg.type().isA(PirType::unboxed(RType::integer));      \
+        if (!op->anyArg([&](const Value* arg) {                                \
+                return arg != op->env() &&                                     \
+                       !arg->type.isA(PirType::unboxed(RType::integer));       \
             })) {                                                              \
-            cs << BC::Factory##_int();                                         \
-        } else if (!op->anyArg([&](const InstrArg& arg) {                      \
-                       return arg.val() != op->env() &&                        \
-                              !arg.type().isA(PirType::unboxed(RType::real));  \
+            cs << BC::Factory1##_int();                                        \
+        } else if (!op->anyArg([&](const Value* arg) {                         \
+                       return arg != op->env() &&                              \
+                              !arg->type.isA(PirType::unboxed(RType::real));   \
                    })) {                                                       \
-            cs << BC::Factory##_real();                                        \
+            cs << BC::Factory1##_real();                                       \
+        } else if (!op->anyArg([&](const Value* arg) {                         \
+                       return arg != op->env() &&                              \
+                              !arg->type.isA(                                  \
+                                  PirType::unboxed(RType::logical));           \
+                   })) {                                                       \
+            cs << BC::Factory1##_lgl();                                        \
         } else {                                                               \
-            cs << BC::Factory();                                               \
+            cs << BC::Factory2();                                              \
         }                                                                      \
         cs.addSrcIdx(instr->srcIdx);                                           \
         break;                                                                 \
     }
-#define SIMPLE_NATIVE_LGL(Name, Factory)                                       \
-    SIMPLE_NATIVE_LGL2(Name, Factory, Factory)
-#define SIMPLE_NATIVE_LGL2(Name, Factory1, Factory2)                           \
+#define SIMPLE_NATIVE_NUM(Name, Factory)                                       \
     case Tag::Name: {                                                          \
         auto op = Name::Cast(instr);                                           \
-        if (!op->anyArg([&](const InstrArg& arg) {                             \
-                return arg.val() != op->env() &&                               \
-                       !arg.type().isA(PirType::unboxed(RType::logical));      \
+        if (!op->anyArg([&](const Value* arg) {                                \
+                return arg != op->env() &&                                     \
+                       !arg->type.isA(PirType::unboxed(RType::integer));       \
             })) {                                                              \
-            cs << BC::Factory1##_lgl();                                        \
+            cs << BC::Factory##_int();                                         \
+        } else if (!op->anyArg([&](const Value* arg) {                         \
+                       return arg != op->env() &&                              \
+                              !arg->type.isA(PirType::unboxed(RType::real));   \
+                   })) {                                                       \
+            cs << BC::Factory##_real();                                        \
         } else {                                                               \
-            cs << BC::Factory2();                                              \
+            cs << BC::Factory();                                               \
         }                                                                      \
         cs.addSrcIdx(instr->srcIdx);                                           \
         break;                                                                 \
@@ -1018,17 +1028,17 @@ size_t Pir2Rir::compileCode(Context& ctx, Code* code) {
                 SIMPLE_NATIVE_NUM(IDiv, idiv);
                 SIMPLE_NATIVE_NUM(Mod, mod);
                 SIMPLE_WITH_SRCIDX(Pow, pow);
-                SIMPLE_NATIVE_LGL(Lt, lt);
-                SIMPLE_NATIVE_LGL(Gt, gt);
-                SIMPLE_NATIVE_LGL(Lte, ge);
-                SIMPLE_NATIVE_LGL(Gte, le);
-                SIMPLE_NATIVE_LGL(Eq, eq);
-                SIMPLE_NATIVE_LGL(Neq, ne);
+                SIMPLE_NATIVE(Lt, lt);
+                SIMPLE_NATIVE(Gt, gt);
+                SIMPLE_NATIVE(Lte, ge);
+                SIMPLE_NATIVE(Gte, le);
+                SIMPLE_NATIVE(Eq, eq);
+                SIMPLE_NATIVE(Neq, ne);
                 SIMPLE_WITH_SRCIDX(Colon, colon);
                 SIMPLE_WITH_SRCIDX(AsLogical, asLogical);
                 SIMPLE_NATIVE_NUM(Plus, uplus);
                 SIMPLE_NATIVE_NUM(Minus, uminus);
-                SIMPLE_NATIVE_LGL2(Not, not, not_);
+                SIMPLE_NATIVE2(Not, not, not_);
                 SIMPLE_WITH_SRCIDX(Extract1_1D, extract1_1);
                 SIMPLE_WITH_SRCIDX(Extract2_1D, extract2_1);
                 SIMPLE_WITH_SRCIDX(Extract1_2D, extract1_2);
@@ -1037,8 +1047,8 @@ size_t Pir2Rir::compileCode(Context& ctx, Code* code) {
                 SIMPLE_WITH_SRCIDX(Subassign2_1D, subassign2_1);
                 SIMPLE_WITH_SRCIDX(Subassign1_2D, subassign1_2);
                 SIMPLE_WITH_SRCIDX(Subassign2_2D, subassign2_2);
-#undef SIMPLE_NATIVE_LGL
 #undef SIMPLE_NATIVE_NUM
+#undef SIMPLE_NATIVE
 #undef SIMPLE_WITH_SRCIDX
 
             case Tag::Call: {

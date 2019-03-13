@@ -25,10 +25,10 @@ namespace pir {
  *  - flags_ : TypeFlag::rtype | TypeFlag::lazy
  *  - t_.r   : RType::integer
  *
- * A machine boolean has type:
+ * A machine checkpoint has type:
  *
  *  - flags_ : ()
- *  - t_.n   : NativeType::test
+ *  - t_.n   : NativeType::checkpoint
  *
  * An R value (not a promise), has:
  *
@@ -72,12 +72,11 @@ enum class RType : uint8_t {
 enum class NativeType : uint8_t {
     _UNUSED_,
 
-    test,
     checkpoint,
     frameState,
     context,
 
-    FIRST = test,
+    FIRST = checkpoint,
     LAST = frameState,
 };
 
@@ -171,7 +170,7 @@ struct PirType {
     void merge(SEXPTYPE t);
 
     static PirType unboxed(RType rtype) {
-        return PirType(rtype).scalar().unboxed();
+        return PirType(rtype).notObject().scalar().unboxed();
     }
     static PirType unboxableNum() {
         return PirType(RType::integer).scalar() | RType::real;
@@ -187,6 +186,7 @@ struct PirType {
     }
     static PirType vecs() { return num() | RType::str | RType::vec; }
     static PirType closure() { return RType::closure; }
+    static PirType test() { return unboxed(RType::logical); }
 
     static PirType promiseWrappedVal() { return val().orPromiseWrapped(); }
     static PirType valOrLazy() { return val().orLazy(); }
@@ -254,8 +254,7 @@ struct PirType {
     }
 
     RIR_INLINE PirType unboxed() const {
-        assert(isRType());
-        assert(isScalar());
+        assert(isRType() && isScalar() && !maybeObj());
         PirType t = *this;
         t.flags_.reset(TypeFlags::isBoxed);
         return t;
@@ -351,9 +350,6 @@ inline std::ostream& operator<<(std::ostream& out, NativeType t) {
     switch (t) {
     case NativeType::context:
         out << "ct";
-        break;
-    case NativeType::test:
-        out << "t";
         break;
     case NativeType::checkpoint:
         out << "cp";
@@ -479,6 +475,8 @@ inline std::ostream& operator<<(std::ostream& out, PirType t) {
         out << "~";
     if (!t.maybeObj())
         out << "'";
+    if (t == PirType::test())
+        out << "/t";
 
     return out;
 }

@@ -80,7 +80,6 @@ static Sources hasSources(Opcode bc) {
         : case Opcode::op##lgl_
 #define NATIVE_NUM(op)                                                         \
     Opcode::op : case Opcode::op##int_ : case Opcode::op##real_
-#define NATIVE_LGL(op) Opcode::op : case Opcode::op##lgl_
 
     case Opcode::extract1_1_:
     case Opcode::extract1_2_:
@@ -95,13 +94,13 @@ static Sources hasSources(Opcode bc) {
     case NATIVE_NUM(sub_):
     case NATIVE_NUM(uplus_):
     case NATIVE_NUM(uminus_):
-    case NATIVE_LGL(not_):
-    case NATIVE_LGL(lt_):
-    case NATIVE_LGL(gt_):
-    case NATIVE_LGL(le_):
-    case NATIVE_LGL(ge_):
-    case NATIVE_LGL(eq_):
-    case NATIVE_LGL(ne_):
+    case NATIVE(not_):
+    case NATIVE(lt_):
+    case NATIVE(gt_):
+    case NATIVE(le_):
+    case NATIVE(ge_):
+    case NATIVE(eq_):
+    case NATIVE(ne_):
     case Opcode::pow_:
     case Opcode::colon_:
     case Opcode::subassign1_1_:
@@ -197,7 +196,6 @@ SIMPLE_INSTRUCTIONS(V, _)
 
     case Opcode::invalid_:
     case Opcode::num_of: {}
-#undef NATIVE_LGL
 #undef NATIVE_NUM
 #undef NATIVE
     }

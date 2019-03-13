@@ -97,6 +97,13 @@ class TheCleanup {
                         removed = true;
                         next = bb->remove(ip);
                     }
+                } else if (auto tst = AsTest::Cast(i)) {
+                    auto arg = tst->arg<0>().val();
+                    if (arg->type.isA(PirType::unboxed(RType::logical))) {
+                        tst->replaceUsesWith(arg);
+                        removed = true;
+                        next = bb->remove(ip);
+                    }
                 } else if (auto env = MkEnv::Cast(i)) {
                     static std::unordered_set<Tag> tags{Tag::FrameState,
                                                         Tag::IsEnvStub};
