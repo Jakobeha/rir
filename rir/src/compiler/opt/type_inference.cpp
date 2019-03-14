@@ -25,9 +25,11 @@ void TypeInference::apply(RirCompiler&, ClosureVersion* function,
             Instruction* i = *ip;
             auto next = ip + 1;
 
-            if (Add::Cast(i)) {
-                i->type = PirType::bottom();
-            }
+            // TODO
+            // Change return type of binops if both arguments are
+            // if (Add::Cast(i)) {
+            //     i->type = PirType::bottom();
+            // }
 
             if (LdVar::Cast(i)) {
                 if (i->type.maybePromiseWrapped()) {
@@ -35,6 +37,7 @@ void TypeInference::apply(RirCompiler&, ClosureVersion* function,
                 } else {
                     i->type = PirType::bottom();
                 }
+                i->type = i->type | RType::real;
             }
 
             /*auto before = analysis.at<ScopeAnalysis::BeforeInstruction>(i);

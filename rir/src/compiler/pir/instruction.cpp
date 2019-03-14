@@ -181,18 +181,13 @@ void Instruction::replaceUsesIn(Value* replace, BB* target) {
         replace->type.print(std::cerr);
         std::cerr << "\n";
         printBacktrace();
-        // assert(false);
+        assert(false);
     }
 
     Visitor::run(target, [&](Instruction* i) {
         i->eachArg([&](InstrArg& arg) {
-            if (arg.val() == this) {
+            if (arg.val() == this)
                 arg.val() = replace;
-                // TODO: will this ever be wrong?
-                if (arg.type().isA(replace->type)) {
-                    arg.type() = replace->type;
-                }
-            }
         });
     });
 }

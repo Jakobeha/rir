@@ -17,9 +17,9 @@ BB* PhiPlacement::find(const CFG& cfg, BB* searchBlock,
         }
         return true;
     };
-    if (!hasAllInputs(searchBlock))
-        return nullptr;
-    assert(hasAllInputs(searchBlock));
+    // if (!hasAllInputs(searchBlock))
+    //    return nullptr;
+    // assert(hasAllInputs(searchBlock));
 
     // First move up the phi until at least one input comes from a different
     // block.
@@ -48,12 +48,12 @@ checkCandidate:
     // This can happen if the optimizer knows that a2 comes from the {} block,
     // but at the same time the instruction already got delayed into the merge
     // block.
-    for (auto& input : inputs)
-        if (cfg.isImmediatePredecessor(input, searchBlock))
-            for (auto& input2 : inputs)
-                if (input != input2)
-                    if (cfg.isPredecessor(input2, input))
-                        return nullptr;
+    // for (auto& input : inputs)
+    //     if (cfg.isImmediatePredecessor(input, searchBlock))
+    //         for (auto& input2 : inputs)
+    //             if (input != input2)
+    //                 if (cfg.isPredecessor(input2, input))
+    //                     return nullptr;
 
     return searchBlock;
 }
