@@ -25,20 +25,14 @@ void TypeInference::apply(RirCompiler&, ClosureVersion* function,
             Instruction* i = *ip;
             auto next = ip + 1;
 
-            // TODO
-            // Change return type of binops if both arguments are
-            // if (Add::Cast(i)) {
-            //     i->type = PirType::bottom();
-            // }
-
-            if (LdVar::Cast(i)) {
-                if (i->type.maybePromiseWrapped()) {
-                    i->type = PirType::bottom().orPromiseWrapped();
-                } else {
-                    i->type = PirType::bottom();
-                }
-                i->type = i->type | RType::real;
-            }
+            // if (LdVar::Cast(i)) {
+            //    if (i->type.maybePromiseWrapped()) {
+            //        i->type = PirType::bottom().orPromiseWrapped();
+            //    } else {
+            //        i->type = PirType::bottom();
+            //    }
+            // i->type = i->type | RType::real;
+            //}
 
             /*auto before = analysis.at<ScopeAnalysis::BeforeInstruction>(i);
             auto after = analysis.at<ScopeAnalysis::AfterInstruction>(i);

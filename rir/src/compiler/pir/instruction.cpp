@@ -264,6 +264,42 @@ bool Instruction::envOnlyForObj() {
     return false;
 }
 
+void Instruction::updateTypeFromSig(PirSignature sig) {
+    for (PirSignature::Overload overload : sig.overloads) {
+        // Don't want to update to a supertype
+        if (!overload.type.isA(type) || overload.args.size() != numValArgs()) {
+            continue;
+        }
+        bool argsMatch = true;
+        for (unsigned i = 0; i < overload.args.size(); i++) {
+            PirType oargType = overload.args[i];
+            PirType argType = arg(i).val()->type;
+            if (!argType.isA(oargType)) {
+                argsMatch = false;
+                break;
+            }
+        }
+        if (!argsMatch) {
+            continue;
+        }
+        type = overload.type;
+        if (sig.specScalar) {
+            bool isScalar = true;
+            for (unsigned i = 0; i < numValArgs(); i++) {
+                PirType argType = arg(i).val()->type;
+                if (!argType.isScalar()) {
+                    isScalar = false;
+                    break;
+                }
+            }
+            if (isScalar) {
+                type.setScalar();
+            }
+        }
+        break;
+    }
+}
+
 LdConst::LdConst(SEXP c, PirType t)
     : FixedLenInstruction(t), idx(Pool::insert(c)) {}
 LdConst::LdConst(SEXP c)

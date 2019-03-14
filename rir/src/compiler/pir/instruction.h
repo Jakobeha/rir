@@ -143,6 +143,14 @@ class Instruction : public Value {
     virtual bool branchOrExit() const = 0;
 
     virtual size_t nargs() const = 0;
+    // Ignores env arg
+    size_t numValArgs() {
+        if (hasEnv()) {
+            return nargs() - 1;
+        } else {
+            return nargs();
+        }
+    }
 
     virtual Instruction* clone() const = 0;
 
@@ -178,6 +186,7 @@ class Instruction : public Value {
     bool unused();
 
     virtual void updateType() {};
+    void updateTypeFromSig(PirSignature sig);
 
     virtual void printEnv(std::ostream& out, bool tty) const;
     virtual void printArgs(std::ostream& out, bool tty) const;
@@ -971,29 +980,31 @@ class FLI(Identical, 2, Effect::None, EnvAccess::None) {
 SIMPLE_INSTRUCTIONS(V, _)
 #undef V
 
-#define BINOP(Name, Type)                                                      \
+#define BINOP(Name, Sig)                                                       \
     class FLIE(Name, 3, Effect::None, EnvAccess::Leak) {                       \
       public:                                                                  \
         Name(Value* lhs, Value* rhs, Value* env, unsigned srcIdx)              \
             : FixedLenInstructionWithEnvSlot(                                  \
-                  Type, {{PirType::val(), PirType::val()}}, {{lhs, rhs}}, env, \
-                  srcIdx) {}                                                   \
+                  PirType::val(), {{PirType::val(), PirType::val()}},          \
+                  {{lhs, rhs}}, env, srcIdx) {}                                \
+                                                                               \
+        void updateType() override final { updateTypeFromSig(Sig); };          \
     }
 
-BINOP(Mul, PirType::val());
-BINOP(Div, PirType::val());
-BINOP(IDiv, PirType::val());
-BINOP(Mod, PirType::val());
-BINOP(Add, PirType::val());
-BINOP(Colon, PirType::val());
-BINOP(Pow, PirType::val());
-BINOP(Sub, PirType::val());
-BINOP(Gte, RType::logical);
-BINOP(Lte, RType::logical);
-BINOP(Gt, RType::logical);
-BINOP(Lt, RType::logical);
-BINOP(Neq, RType::logical);
-BINOP(Eq, RType::logical);
+BINOP(Mul, PirSignature::numBinop());
+BINOP(Div, PirSignature::realBinop());
+BINOP(IDiv, PirSignature::numBinop());
+BINOP(Mod, PirSignature::numBinop());
+BINOP(Add, PirSignature::numBinop());
+BINOP(Colon, PirSignature::none());
+BINOP(Pow, PirSignature::numBinop());
+BINOP(Sub, PirSignature::numBinop());
+BINOP(Gte, PirSignature::lglBinop());
+BINOP(Lte, PirSignature::lglBinop());
+BINOP(Gt, PirSignature::lglBinop());
+BINOP(Lt, PirSignature::lglBinop());
+BINOP(Neq, PirSignature::lglBinop());
+BINOP(Eq, PirSignature::lglBinop());
 
 #undef BINOP
 
@@ -1010,18 +1021,20 @@ BINOP_NOENV(LOr, RType::logical);
 
 #undef BINOP_NOENV
 
-#define UNOP(Name)                                                             \
+#define UNOP(Name, Sig)                                                        \
     class FLIE(Name, 2, Effect::None, EnvAccess::Leak) {                       \
       public:                                                                  \
         Name(Value* v, Value* env, unsigned srcIdx)                            \
             : FixedLenInstructionWithEnvSlot(                                  \
                   PirType::val(), {{PirType::val()}}, {{v}}, env, srcIdx) {}   \
+                                                                               \
+        void updateType() override final { updateTypeFromSig(Sig); };          \
     }
 
-UNOP(Not);
-UNOP(Plus);
-UNOP(Minus);
-UNOP(Length);
+UNOP(Not, PirSignature::lglUnop());
+UNOP(Plus, PirSignature::numUnop());
+UNOP(Minus, PirSignature::numUnop());
+UNOP(Length, PirSignature::none());
 
 #undef UNOP
 
