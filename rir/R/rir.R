@@ -142,3 +142,7 @@ rir.body <- function(f) {
 .int3 <- function() {
     stop("missed breakpoint, did you re-compile RIR?")
 }
+
+# returns a version of the function where PIR assumes has the given return type
+# and other properties
+.assume <- function(f, type, props) f
