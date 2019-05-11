@@ -43,7 +43,7 @@ void TypeInference::apply(RirCompiler&, ClosureVersion* function,
                     i->eachArg([&](Value* v) {
                         if (i->mayHaveEnv() && v == i->env())
                             return;
-                        inferred = inferred | getType(v).notPromise();
+                        inferred = inferred | getType(v);
                     });
                     return inferred;
                 };
@@ -104,7 +104,8 @@ void TypeInference::apply(RirCompiler&, ClosureVersion* function,
                     }
 
                     if ("c" == name) {
-                        inferred = mergedArgumentType();
+                        inferred =
+                            mergedArgumentType().notPromise().notObject();
                         if (c->nCallArgs() > 1)
                             inferred.setNotScalar();
                         break;
