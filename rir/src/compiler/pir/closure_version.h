@@ -3,6 +3,7 @@
 
 #include "../../runtime/Function.h"
 #include "../debugging/debugging.h"
+#include "closure_property.h"
 #include "code.h"
 #include "optimization_context.h"
 #include "pir.h"
@@ -18,50 +19,28 @@ namespace pir {
  *
  */
 class ClosureVersion : public Code {
-  public:
-    enum class Property {
-        IsEager,
-        NoReflection,
-
-        FIRST = IsEager,
-        LAST = NoReflection
-
-    };
-
-    struct Properties : public EnumSet<Property> {
-        Properties() : EnumSet<Property>(){};
-        explicit Properties(const EnumSet<Property>& other)
-            : EnumSet<Property>(other) {}
-        explicit Properties(const Property& other) : EnumSet<Property>(other) {}
-
-        std::vector<size_t> argumentForceOrder;
-        friend std::ostream& operator<<(std::ostream& out, const Properties&);
-    };
-
-  private:
     Closure* owner_;
     std::vector<Promise*> promises_;
-    const OptimizationContext& optimizationContext_;
+    OptimizationContext optimizationContext_;
 
     std::string name_;
     std::string nameSuffix_;
     ClosureVersion(Closure* closure,
-                   const OptimizationContext& optimizationContext,
-                   const Properties& properties = Properties());
+                   const OptimizationContext& optimizationContext);
 
     friend class Closure;
 
   public:
+    ClosureProperties properties;
+
     ClosureVersion* clone(const Assumptions& newAssumptions);
 
-    const Assumptions& assumptions() const {
-        return optimizationContext_.assumptions;
-    }
     const OptimizationContext& optimizationContext() const {
         return optimizationContext_;
     }
-
-    Properties properties;
+    const Assumptions& assumptions() const {
+        return optimizationContext_.assumptions;
+    }
 
     Closure* owner() const { return owner_; }
     size_t nargs() const;
@@ -100,8 +79,6 @@ class ClosureVersion : public Code {
 
     ~ClosureVersion();
 };
-
-std::ostream& operator<<(std::ostream& out, const ClosureVersion::Property&);
 
 } // namespace pir
 } // namespace rir

@@ -29,7 +29,7 @@ rir.compile <- function(what) {
 }
 
 # optimizes given rir compiled closure
-pir.compile <- function(what, debugFlags, debugStyle, P_EARLY=FALSE, P_FINAL=FALSE, P_OPT=FALSE, WARN=FALSE) {
+pir.compile <- function(what, debugFlags, debugStyle, P_EARLY=FALSE, P_FINAL=FALSE, P_OPT=FALSE, WARN=FALSE, assumeType=NULL, assumeProps=NULL) {
     debugFlags <-
         if (missing(debugFlags)) {
             if (P_EARLY)
@@ -54,7 +54,15 @@ pir.compile <- function(what, debugFlags, debugStyle, P_EARLY=FALSE, P_FINAL=FAL
           what,
           as.name(as.character(substitute(what))),
           debugFlags,
-          debugStyle)
+          debugStyle,
+          assumeType,
+          assumeProps)
+}
+
+# returns a version of the function where PIR assumes has the given return type
+# and other properties
+pir.assume <- function(f, type, props) {
+    pir.compile(f, assumeType=type, assumeProps=props)
 }
 
 pir.tests <- function() {
@@ -142,7 +150,3 @@ rir.body <- function(f) {
 .int3 <- function() {
     stop("missed breakpoint, did you re-compile RIR?")
 }
-
-# returns a version of the function where PIR assumes has the given return type
-# and other properties
-.assume <- function(f, type, props) f

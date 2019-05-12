@@ -1,4 +1,5 @@
 #include "rir_2_pir_compiler.h"
+#include "../../pir/closure_property.h"
 #include "../../pir/pir_impl.h"
 #include "R/RList.h"
 #include "rir_2_pir.h"
@@ -35,6 +36,14 @@ Rir2PirCompiler::Rir2PirCompiler(Module* module, StreamLogger& logger)
 void Rir2PirCompiler::compileClosure(SEXP closure, const std::string& name,
                                      const Assumptions& assumptions,
                                      MaybeCls success, Maybe fail) {
+    ClosureProperties aprops;
+    compileClosure(closure, name, assumptions, aprops, success, fail);
+}
+
+void Rir2PirCompiler::compileClosure(SEXP closure, const std::string& name,
+                                     const Assumptions& assumptions,
+                                     const ClosureProperties& aprops,
+                                     MaybeCls success, Maybe fail) {
     assert(isValidClosureSEXP(closure));
 
     DispatchTable* tbl = DispatchTable::unpack(BODY(closure));
@@ -52,7 +61,7 @@ void Rir2PirCompiler::compileClosure(SEXP closure, const std::string& name,
     }
     auto pirClosure = module->getOrDeclareRirClosure(closureName, closure, fun);
     OptimizationContext context(assumptions);
-    compileClosure(pirClosure, context, success, fail);
+    compileClosure(pirClosure, context, aprops, success, fail);
 }
 
 void Rir2PirCompiler::compileFunction(rir::Function* srcFunction,
@@ -63,11 +72,13 @@ void Rir2PirCompiler::compileFunction(rir::Function* srcFunction,
     OptimizationContext context(assumptions);
     auto closure =
         module->getOrDeclareRirFunction(name, srcFunction, formals, srcRef);
-    compileClosure(closure, context, success, fail);
+    ClosureProperties aprops;
+    compileClosure(closure, context, aprops, success, fail);
 }
 
 void Rir2PirCompiler::compileClosure(Closure* closure,
                                      const OptimizationContext& ctx,
+                                     const ClosureProperties& aprops,
                                      MaybeCls success, Maybe fail_) {
 
     if (!ctx.assumptions.includes(minimalAssumptions)) {
@@ -110,10 +121,14 @@ void Rir2PirCompiler::compileClosure(Closure* closure,
         return fail();
     }
 
-    if (auto existing = closure->findCompatibleVersion(ctx))
+    if (auto existing = closure->findCompatibleVersion(ctx)) {
+        // Modifies version in-place with assumed properties
+        existing->properties = existing->properties | aprops;
         return success(existing);
+    }
 
     auto version = closure->declareVersion(ctx);
+    version->properties = version->properties | aprops;
 
     Builder builder(version, closure->closureEnv());
     auto& log = logger.begin(version);

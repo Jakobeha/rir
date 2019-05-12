@@ -371,7 +371,7 @@ void ForceDominance::apply(RirCompiler&, ClosureVersion* cls,
 
         auto& result = analysis.result();
         if (result.eagerLikeFunction(cls))
-            cls->properties.set(ClosureVersion::Property::IsEager);
+            cls->properties.set(ClosureProperty::IsEager);
         cls->properties.argumentForceOrder = result.argumentForceOrder;
 
         std::unordered_map<Force*, Value*> inlinedPromise;

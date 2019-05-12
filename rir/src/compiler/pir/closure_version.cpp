@@ -91,7 +91,6 @@ ClosureVersion* ClosureVersion::clone(const Assumptions& newAssumptions) {
     auto ctx = optimizationContext_;
     ctx.assumptions = ctx.assumptions | newAssumptions;
     auto c = owner_->declareVersion(ctx);
-    c->properties = properties;
     c->entry = BBTransform::clone(entry, c, c);
     return c;
 }
@@ -116,49 +115,14 @@ size_t ClosureVersion::size() const {
 size_t ClosureVersion::nargs() const { return owner_->nargs(); }
 
 ClosureVersion::ClosureVersion(Closure* closure,
-                               const OptimizationContext& optimizationContext,
-                               const Properties& properties)
-    : owner_(closure), optimizationContext_(optimizationContext),
-      properties(properties) {
+                               const OptimizationContext& optimizationContext)
+    : owner_(closure), optimizationContext_(optimizationContext) {
     auto id = std::stringstream();
     id << closure->name() << "[" << this << "]";
     name_ = id.str();
     id.str("");
     id << this;
     nameSuffix_ = id.str();
-}
-
-std::ostream& operator<<(std::ostream& out, const ClosureVersion::Property& p) {
-    switch (p) {
-    case ClosureVersion::Property::IsEager:
-        out << "Eager";
-        break;
-    case ClosureVersion::Property::NoReflection:
-        out << "!Reflection";
-        break;
-    }
-    return out;
-}
-
-std::ostream& operator<<(std::ostream& out,
-                         const ClosureVersion::Properties& props) {
-    for (auto p = props.begin(); p != props.end(); ++p) {
-        out << *p;
-        if ((p + 1) != props.end())
-            out << ", ";
-    }
-    if (props.argumentForceOrder.size() > 0) {
-        if (!props.empty())
-            out << ", ";
-        out << "ForceOrd: ";
-        for (auto o = props.argumentForceOrder.begin();
-             o != props.argumentForceOrder.end(); ++o) {
-            out << *o;
-            if ((o + 1) != props.argumentForceOrder.end())
-                out << " ";
-        }
-    }
-    return out;
 }
 
 } // namespace pir

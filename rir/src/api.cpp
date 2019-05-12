@@ -7,6 +7,7 @@
 #include "api.h"
 
 #include "compiler/parameter.h"
+#include "compiler/pir/closure_property.h"
 #include "compiler/test/PirCheck.h"
 #include "compiler/test/PirTests.h"
 #include "compiler/translations/pir_2_rir/pir_2_rir.h"
@@ -24,7 +25,7 @@ using namespace rir;
 
 int R_ENABLE_JIT = getenv("R_ENABLE_JIT") ? atoi(getenv("R_ENABLE_JIT")) : 3;
 
-bool parseDebugStyle(const char* str, pir::DebugStyle& s) {
+static bool parseDebugStyle(const char* str, pir::DebugStyle& s) {
 #define V(style)                                                               \
     if (strcmp(str, #style) == 0) {                                            \
         s = pir::DebugStyle::style;                                            \
@@ -35,6 +36,20 @@ bool parseDebugStyle(const char* str, pir::DebugStyle& s) {
     {
         return false;
     }
+}
+
+/*static pir::PirType parsePirType(SEXP s) {
+    if (s == R_NilValue)
+        return pir::PirType::any();
+    Rf_error("couldn't read PIR type");
+    return pir::PirType::any();
+}*/
+
+static pir::ClosureProperties parseClosureProperties(SEXP s) {
+    if (s == R_NilValue)
+        return pir::ClosureProperties();
+    Rf_error("couldn't read closure properties");
+    return pir::ClosureProperties();
 }
 
 REXPORT SEXP rir_disassemble(SEXP what, SEXP verbose) {
@@ -204,9 +219,9 @@ REXPORT SEXP pir_setDebugFlags(SEXP debugFlags) {
     return R_NilValue;
 }
 
-SEXP pirCompile(SEXP what, const Assumptions& assumptions,
-                const std::string& name, const pir::DebugOptions& debug) {
-
+static SEXP pirCompile(SEXP what, const Assumptions& assumptions,
+                       const std::string& name, const pir::DebugOptions& debug,
+                       const pir::ClosureProperties& aprops) {
     if (!isValidClosureSEXP(what)) {
         Rf_error("not a compiled closure");
     }
@@ -222,7 +237,7 @@ SEXP pirCompile(SEXP what, const Assumptions& assumptions,
     pir::StreamLogger logger(debug);
     logger.title("Compiling " + name);
     pir::Rir2PirCompiler cmp(m, logger);
-    cmp.compileClosure(what, name, assumptions,
+    cmp.compileClosure(what, name, assumptions, aprops,
                        [&](pir::ClosureVersion* c) {
                            logger.flush();
                            cmp.optimizeModule();
@@ -248,6 +263,12 @@ SEXP pirCompile(SEXP what, const Assumptions& assumptions,
     return what;
 }
 
+SEXP pirCompile(SEXP closure, const rir::Assumptions& assumptions,
+                const std::string& name, const rir::pir::DebugOptions& debug) {
+    pir::ClosureProperties aprops = pir::ClosureProperties();
+    return pirCompile(closure, assumptions, name, debug, aprops);
+}
+
 // Used in test infrastructure for counting invocation of different versions
 REXPORT SEXP rir_invocation_count(SEXP what) {
     if (!isValidClosureSEXP(what)) {
@@ -263,8 +284,8 @@ REXPORT SEXP rir_invocation_count(SEXP what) {
     return res;
 }
 
-REXPORT SEXP pir_compile(SEXP what, SEXP name, SEXP debugFlags,
-                         SEXP debugStyle) {
+REXPORT SEXP pir_compile(SEXP what, SEXP name, SEXP debugFlags, SEXP debugStyle,
+                         SEXP assumeType, SEXP assumeProps) {
     if (debugFlags != R_NilValue &&
         (TYPEOF(debugFlags) != INTSXP || Rf_length(debugFlags) != 1))
         Rf_error("pir_compile expects an integer scalar as second parameter");
@@ -283,8 +304,9 @@ REXPORT SEXP pir_compile(SEXP what, SEXP name, SEXP debugFlags,
             Rf_error("pir_compile - given unknown debug style");
         }
     }
+    pir::ClosureProperties aprops = parseClosureProperties(assumeProps);
     return pirCompile(what, rir::pir::Rir2PirCompiler::defaultAssumptions, n,
-                      opts);
+                      opts, aprops);
 }
 
 REXPORT SEXP pir_tests() {

@@ -414,6 +414,18 @@ struct PirType {
                (isRType() ? t_.r == o.t_.r : t_.n == o.t_.n);
     }
 
+    RIR_INLINE bool operator<(const PirType& o) const {
+        if (isRType() != o.isRType())
+            return isRType() < o.isRType();
+        if (isRType() && t_.r != o.t_.r)
+            return t_.r < o.t_.r;
+        if (!isRType() && t_.n != o.t_.n)
+            return t_.n < o.t_.n;
+        if (flags_ != o.flags_)
+            return flags_ < o.flags_;
+        return false;
+    }
+
     bool isA(const PirType& o) const { return o.isSuper(*this); }
 
     bool isSuper(const PirType& o) const {

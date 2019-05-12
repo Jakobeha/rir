@@ -93,7 +93,7 @@ class TheScopeResolution {
         analysis();
         auto& finalState = analysis.result();
         if (finalState.noReflection())
-            function->properties.set(ClosureVersion::Property::NoReflection);
+            function->properties.set(ClosureProperty::NoReflection);
 
         std::unordered_map<Value*, Value*> replacedValue;
         auto getReplacedValue = [&](Value* val) {

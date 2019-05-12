@@ -27,6 +27,9 @@ class Rir2PirCompiler : public RirCompiler {
     }
     void compileClosure(SEXP, const std::string& name, const Assumptions& ctx,
                         MaybeCls success, Maybe fail);
+    void compileClosure(SEXP, const std::string& name, const Assumptions& ctx,
+                        const ClosureProperties& aprops, MaybeCls success,
+                        Maybe fail);
     void compileFunction(rir::Function* f, const std::string& name,
                          SEXP formals, SEXP srcRef, MaybeCls success,
                          Maybe fail) {
@@ -41,7 +44,8 @@ class Rir2PirCompiler : public RirCompiler {
   private:
     StreamLogger& logger;
     void compileClosure(Closure* closure, const OptimizationContext& ctx,
-                        MaybeCls success, Maybe fail);
+                        const ClosureProperties& aprops, MaybeCls success,
+                        Maybe fail);
 };
 
 } // namespace pir
