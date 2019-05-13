@@ -33,6 +33,11 @@ struct ClosureProperties : public EnumSet<ClosureProperty> {
     std::vector<size_t> argumentForceOrder;
     PirType returnType;
 
+    size_t size() const {
+        return sizeof(ClosureProperties) +
+               (argumentForceOrder.size() * sizeof(size_t));
+    }
+
     ClosureProperties operator|(const ClosureProperties&) const;
     friend std::ostream& operator<<(std::ostream& out,
                                     const ClosureProperties&);

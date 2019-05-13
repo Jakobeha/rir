@@ -29,7 +29,7 @@ rir.compile <- function(what) {
 }
 
 # optimizes given rir compiled closure
-pir.compile <- function(what, debugFlags, debugStyle, P_EARLY=FALSE, P_FINAL=FALSE, P_OPT=FALSE, WARN=FALSE, assumeType=NULL, assumeProps=NULL) {
+pir.compile <- function(what, debugFlags, debugStyle, assumeProps=pir.assumeProps(), P_EARLY=FALSE, P_FINAL=FALSE, P_OPT=FALSE, WARN=FALSE) {
     debugFlags <-
         if (missing(debugFlags)) {
             if (P_EARLY)
@@ -55,14 +55,13 @@ pir.compile <- function(what, debugFlags, debugStyle, P_EARLY=FALSE, P_FINAL=FAL
           as.name(as.character(substitute(what))),
           debugFlags,
           debugStyle,
-          assumeType,
           assumeProps)
 }
 
 # returns a version of the function where PIR assumes has the given return type
 # and other properties
-pir.assume <- function(f, type, props) {
-    pir.compile(f, assumeType=type, assumeProps=props)
+pir.assume <- function(f, ...) {
+    pir.compile(f, assumeProps=pir.assumeProps(...))
 }
 
 pir.tests <- function() {
@@ -116,6 +115,15 @@ pir.debugFlags <- function(ShowWarnings = FALSE,
           NULL)
 }
 
+# creates a bitset with assumed closure properties
+pir.assumeProps <- function(IsEager=FALSE, 
+                            NoReflection=FALSE,
+                            argForceOrder=c(),
+                            type=NULL) {
+    # !!!  This list of arguments *must* be exactly equal to the            !!!
+    # !!!  LIST_OF_CLOSURE_PROPERTIES in compiler/pir/closure_properties.h  !!!
+    .Call("pir_assumeProps", IsEager, NoReflection, argForceOrder, type)
+}
 # sets the default debug options for pir compiler
 pir.setDebugFlags <- function(debugFlags = pir.debugFlags()) {
     invisible(.Call("pir_setDebugFlags", debugFlags))

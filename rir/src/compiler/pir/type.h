@@ -144,6 +144,10 @@ struct PirType {
         return t;
     }
 
+  private:
+    constexpr PirType(const Type& t, const FlagSet& f) : flags_(f), t_(t) {}
+
+  public:
     constexpr PirType() : flags_(topRTypeFlags()), t_(RTypeSet()) {}
     // cppcheck-suppress noExplicitConstructor
     constexpr PirType(const RType& t) : flags_(defaultRTypeFlags()), t_(t) {}
@@ -151,7 +155,6 @@ struct PirType {
     constexpr PirType(const NativeType& t) : t_(t) {}
     // cppcheck-suppress noExplicitConstructor
     constexpr PirType(const RTypeSet& t) : flags_(defaultRTypeFlags()), t_(t) {}
-    constexpr PirType(const RTypeSet& t, const FlagSet& f) : flags_(f), t_(t) {}
     explicit constexpr PirType(const NativeTypeSet& t) : t_(t) {}
     explicit PirType(SEXP);
     constexpr PirType(const PirType& other)
@@ -442,6 +445,8 @@ struct PirType {
         }
         return t_.r.includes(o.t_.r);
     }
+
+    static PirType parse(const std::string& inp);
 
     void print(std::ostream& out = std::cout) const;
 };

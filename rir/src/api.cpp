@@ -143,40 +143,47 @@ REXPORT SEXP pir_assumeProps(
 #undef V
         SEXP forceOrderSexp,
     SEXP typeSexp) {
-    // TODO: Valid format checks
-    pir::ClosureProperties* opts = new pir::ClosureProperties;
+    pir::ClosureProperties opts;
 
 #define V(n)                                                                   \
     if (Rf_asLogical(n##Sexp))                                                 \
-        opts->set(pir::ClosureProperty::n);
+        opts.set(pir::ClosureProperty::n);
     LIST_OF_CLOSURE_PROPERTIES(V)
 #undef V
 
     RList forceOrder(forceOrderSexp);
     for (SEXP idxSexp : forceOrder) {
-        opts.argumentForceOrder.push_back(INTEGER(idxSexp)[0]);
-
-        returnType = parsePirType(typeSexp);
-
-    SEXP res = Rf_allocVector(INTSXP, sizeof(pir::ClosureProperties);
-    *INTEGER(res) = (void*)opts;
-    return res;
+        if (TYPEOF(idxSexp) == INTSXP && LENGTH(idxSexp) == 1)
+            opts.argumentForceOrder.push_back(INTEGER(idxSexp)[0]);
+        else if (TYPEOF(idxSexp) == REALSXP && LENGTH(idxSexp) == 1)
+            opts.argumentForceOrder.push_back((int)REAL(idxSexp)[0]);
+        else
+            Rf_error("can't parse force order - indices must be scalar ints or "
+                     "reals");
     }
+    opts.returnType = parsePirType(typeSexp);
+    // TODO: Would expect opts.size() / sizeof(int), but this needs padding or
+    // opts.size() is wrong.
+    int optsSize = opts.size();
+    SEXP res = Rf_allocVector(INTSXP, optsSize);
+    memcpy(DATAPTR(res), (void*)&opts, optsSize);
+    return res;
+}
 
-    static pir::DebugOptions::DebugFlags getInitialDebugFlags() {
-        auto verb = getenv("PIR_DEBUG");
-        if (!verb)
-            return pir::DebugOptions::DebugFlags();
-        std::istringstream in(verb);
+static pir::DebugOptions::DebugFlags getInitialDebugFlags() {
+    auto verb = getenv("PIR_DEBUG");
+    if (!verb)
+        return pir::DebugOptions::DebugFlags();
+    std::istringstream in(verb);
 
-        pir::DebugOptions::DebugFlags flags;
-        while (!in.fail()) {
-            std::string opt;
-            std::getline(in, opt, ',');
-            if (opt.empty())
-                continue;
+    pir::DebugOptions::DebugFlags flags;
+    while (!in.fail()) {
+        std::string opt;
+        std::getline(in, opt, ',');
+        if (opt.empty())
+            continue;
 
-            bool success = false;
+        bool success = false;
 
 #define V(flag)                                                                \
     if (opt.compare(#flag) == 0) {                                             \
@@ -306,12 +313,15 @@ REXPORT SEXP rir_invocation_count(SEXP what) {
 }
 
 REXPORT SEXP pir_compile(SEXP what, SEXP name, SEXP debugFlags, SEXP debugStyle,
-                         SEXP assumeType, SEXP assumeProps) {
+                         SEXP assumeProps) {
     if (debugFlags != R_NilValue &&
         (TYPEOF(debugFlags) != INTSXP || Rf_length(debugFlags) != 1))
         Rf_error("pir_compile expects an integer scalar as second parameter");
     if (debugStyle != R_NilValue && TYPEOF(debugStyle) != SYMSXP)
         Rf_error("pir_compile expects a symbol as third parameter");
+    if (TYPEOF(assumeProps) != INTSXP)
+        Rf_error("pir_compile expects result of pir.assumeProps as fourth "
+                 "parameter");
     std::string n;
     if (TYPEOF(name) == SYMSXP)
         n = CHAR(PRINTNAME(name));
@@ -325,7 +335,8 @@ REXPORT SEXP pir_compile(SEXP what, SEXP name, SEXP debugFlags, SEXP debugStyle,
             Rf_error("pir_compile - given unknown debug style");
         }
     }
-    pir::ClosureProperties aprops = parseClosureProperties(assumeProps);
+    pir::ClosureProperties aprops =
+        *(pir::ClosureProperties*)DATAPTR(assumeProps);
     return pirCompile(what, rir::pir::Rir2PirCompiler::defaultAssumptions, n,
                       opts, aprops);
 }

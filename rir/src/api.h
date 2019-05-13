@@ -14,7 +14,7 @@ extern rir::pir::DebugOptions PirDebug;
 REXPORT SEXP rir_invocation_count(SEXP what);
 REXPORT SEXP rir_eval(SEXP exp, SEXP env);
 REXPORT SEXP pir_compile(SEXP closure, SEXP name, SEXP debugFlags,
-                         SEXP debugStyle, SEXP assumeType, SEXP assumeProps);
+                         SEXP debugStyle, SEXP assumeProps);
 REXPORT SEXP rir_compile(SEXP what, SEXP env);
 REXPORT SEXP pir_tests();
 REXPORT SEXP pir_check(SEXP f, SEXP check, SEXP env);
