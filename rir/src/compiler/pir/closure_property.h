@@ -8,13 +8,18 @@
 namespace rir {
 namespace pir {
 
+// Remember to update ClosureProperty::LAST
+#define LIST_OF_CLOSURE_PROPERTIES(V)                                          \
+    V(IsEager)                                                                 \
+    V(NoReflection)
+
 enum class ClosureProperty {
-    IsEager,
-    NoReflection,
+#define V(Prop) Prop,
+    LIST_OF_CLOSURE_PROPERTIES(V)
+#undef V
 
-    FIRST = IsEager,
+        FIRST = IsEager,
     LAST = NoReflection
-
 };
 
 struct ClosureProperties : public EnumSet<ClosureProperty> {

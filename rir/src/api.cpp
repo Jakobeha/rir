@@ -38,20 +38,6 @@ static bool parseDebugStyle(const char* str, pir::DebugStyle& s) {
     }
 }
 
-/*static pir::PirType parsePirType(SEXP s) {
-    if (s == R_NilValue)
-        return pir::PirType::any();
-    Rf_error("couldn't read PIR type");
-    return pir::PirType::any();
-}*/
-
-static pir::ClosureProperties parseClosureProperties(SEXP s) {
-    if (s == R_NilValue)
-        return pir::ClosureProperties();
-    Rf_error("couldn't read closure properties");
-    return pir::ClosureProperties();
-}
-
 REXPORT SEXP rir_disassemble(SEXP what, SEXP verbose) {
     if (!what || TYPEOF(what) != CLOSXP)
         Rf_error("Not a rir compiled code");
@@ -142,20 +128,55 @@ REXPORT SEXP pir_debugFlags(
     return res;
 }
 
-static pir::DebugOptions::DebugFlags getInitialDebugFlags() {
-    auto verb = getenv("PIR_DEBUG");
-    if (!verb)
-        return pir::DebugOptions::DebugFlags();
-    std::istringstream in(verb);
+static pir::PirType parsePirType(SEXP typeSexp) {
+    // TODO: Valid format checks
+    if (typeSexp == R_NilValue)
+        return pir::PirType::any();
+    if (TYPEOF(typeSexp) != STRSXP)
+        Rf_error("can't parse pir type");
+    return pir::PirType::parse(CHAR(Rf_asChar(typeSexp)));
+}
 
-    pir::DebugOptions::DebugFlags flags;
-    while (!in.fail()) {
-        std::string opt;
-        std::getline(in, opt, ',');
-        if (opt.empty())
-            continue;
+REXPORT SEXP pir_assumeProps(
+#define V(n) SEXP n##Sexp,
+    LIST_OF_CLOSURE_PROPERTIES(V)
+#undef V
+        SEXP forceOrderSexp,
+    SEXP typeSexp) {
+    // TODO: Valid format checks
+    pir::ClosureProperties* opts = new pir::ClosureProperties;
 
-        bool success = false;
+#define V(n)                                                                   \
+    if (Rf_asLogical(n##Sexp))                                                 \
+        opts->set(pir::ClosureProperty::n);
+    LIST_OF_CLOSURE_PROPERTIES(V)
+#undef V
+
+    RList forceOrder(forceOrderSexp);
+    for (SEXP idxSexp : forceOrder) {
+        opts.argumentForceOrder.push_back(INTEGER(idxSexp)[0]);
+
+        returnType = parsePirType(typeSexp);
+
+    SEXP res = Rf_allocVector(INTSXP, sizeof(pir::ClosureProperties);
+    *INTEGER(res) = (void*)opts;
+    return res;
+    }
+
+    static pir::DebugOptions::DebugFlags getInitialDebugFlags() {
+        auto verb = getenv("PIR_DEBUG");
+        if (!verb)
+            return pir::DebugOptions::DebugFlags();
+        std::istringstream in(verb);
+
+        pir::DebugOptions::DebugFlags flags;
+        while (!in.fail()) {
+            std::string opt;
+            std::getline(in, opt, ',');
+            if (opt.empty())
+                continue;
+
+            bool success = false;
 
 #define V(flag)                                                                \
     if (opt.compare(#flag) == 0) {                                             \
