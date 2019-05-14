@@ -118,6 +118,16 @@ void TypeInference::apply(RirCompiler&, ClosureVersion* function,
                     inferred = i->type;
                 }
 
+                if (auto call = CallInstruction::CastCall(i)) {
+                    if (auto cls = call->tryGetCls()) {
+                        if (auto cv = call->tryDispatch(cls)) {
+                            PirType ret = cv->properties.returnType;
+                            if (ret.isA(inferred))
+                                inferred = ret;
+                        }
+                    }
+                }
+
                 if (!types.count(i) || types.at(i) != inferred) {
                     done = false;
                     types[i] = inferred;
