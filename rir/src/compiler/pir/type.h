@@ -339,16 +339,6 @@ struct PirType {
         return PirType(t_.r);
     }
 
-    RIR_INLINE PirType orNotPromise() const {
-        assert(isRType());
-        if (isRType(RType::prom))
-            return valOrLazy();
-        else
-            return *this;
-    }
-
-    RIR_INLINE PirType notPromise() const { return orNotPromise().forced(); }
-
     // Type of <this>[<idx>] or <this>[<idx>, <idx>]
     PirType subsetType(PirType idx) const {
         assert(isRType());
@@ -391,6 +381,36 @@ struct PirType {
         } else {
             // Possible object
             return valOrLazy();
+        }
+    }
+
+    // Type of c(<this>, ...numArgs)
+    PirType collectionType(int numArgs) const {
+        assert(isRType());
+        PirType t = *this;
+        if (t.isA(RType::nil)) {
+            return RType::nil;
+        }
+        t.t_.r.reset(RType::nil);
+        if (t.isA(num() | RType::str)) {
+            if (numArgs > 1)
+                t.setNotScalar();
+            RTypeSet r = t.t_.r;
+            if (r.contains(RType::str))
+                t.t_.r = RTypeSet(RType::str);
+            else if (r.contains(RType::cplx))
+                t.t_.r = RTypeSet(RType::cplx);
+            else if (r.contains(RType::real))
+                t.t_.r = RTypeSet(RType::real);
+            else if (r.contains(RType::integer))
+                t.t_.r = RTypeSet(RType::integer);
+            else if (r.contains(RType::logical))
+                t.t_.r = RTypeSet(RType::logical);
+            else
+                assert(false);
+            return t;
+        } else {
+            return RType::vec;
         }
     }
 

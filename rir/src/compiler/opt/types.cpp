@@ -105,9 +105,7 @@ void TypeInference::apply(RirCompiler&, ClosureVersion* function,
 
                     if ("c" == name) {
                         inferred =
-                            mergedArgumentType().notPromise().notObject();
-                        if (c->nCallArgs() > 1)
-                            inferred.setNotScalar();
+                            mergedArgumentType().collectionType(n->nCallArgs());
                         break;
                     }
 
