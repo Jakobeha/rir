@@ -105,7 +105,7 @@ void TypeInference::apply(RirCompiler&, ClosureVersion* function,
 
                     if ("c" == name) {
                         inferred =
-                            mergedArgumentType().collectionType(n->nCallArgs());
+                            mergedArgumentType().collectionType(c->nCallArgs());
                         break;
                     }
 
