@@ -9,6 +9,7 @@
 #include "R/Symbols.h"
 #include "R/r.h"
 
+#include "../interpreter/cache.h"
 #include "../interpreter/safe_force.h"
 #include "utils/Pool.h"
 
@@ -76,6 +77,8 @@ class CompilerContext {
             if (loadsSlotInCache.count(name)) {
                 return loadsSlotInCache.at(name);
             } else {
+                if (loadsSlotInCache.size() >= MAX_CACHE_SIZE - 1)
+                    return 0;
                 return loadsSlotInCache
                     .emplace(name, loadsSlotInCache.size() + 1)
                     .first->second;
@@ -188,6 +191,12 @@ void compileWhile(CompilerContext& ctx, std::function<void()> compileCond,
     ctx.popLoop();
 }
 
+void emitGuardForNamePrimitive(CodeStream& cs, SEXP fun) {
+    if (!Compiler::unsoundOpts) {
+        cs << BC::guardNamePrimitive(fun);
+    }
+}
+
 bool compileSimpleFor(CompilerContext& ctx, SEXP sym, SEXP seq, SEXP body,
                       bool voidContext) {
     Match(seq){Case(LANGSXP, fun, argsSexp){RList args(argsSexp);
@@ -269,7 +278,7 @@ bool compileSimpleFor(CompilerContext& ctx, SEXP sym, SEXP seq, SEXP body,
             // {
             // i <- i'
             cs << BC::dup()
-               << BC::stvarCache(sym, ctx.code.top()->cacheSlotFor(sym));
+               << BC::stvarCached(sym, ctx.code.top()->cacheSlotFor(sym));
             // i' <- i' + diff'
             cs << BC::pull(2) << BC::add();
             cs.addSrc(R_NilValue);
@@ -320,8 +329,8 @@ bool compileSpecialCall(CompilerContext& ctx, SEXP ast, SEXP fun, SEXP args_, bo
          fun == symbol::Le || fun == symbol::Ge ||
          fun == symbol::Eq || fun == symbol::Ne ||
          fun == symbol::Colon)) {
-        cs << BC::guardNamePrimitive(fun);
-
+        emitGuardForNamePrimitive(cs, fun);
+        
         compileExpr(ctx, args[0]);
         compileExpr(ctx, args[1]);
 
@@ -366,7 +375,7 @@ bool compileSpecialCall(CompilerContext& ctx, SEXP ast, SEXP fun, SEXP args_, bo
     if (args.length() == 1 &&
         (fun == symbol::Add || fun == symbol::Sub ||
          fun == symbol::Not)) {
-        cs << BC::guardNamePrimitive(fun);
+        emitGuardForNamePrimitive(cs, fun);
 
         compileExpr(ctx, args[0]);
 
@@ -384,7 +393,7 @@ bool compileSpecialCall(CompilerContext& ctx, SEXP ast, SEXP fun, SEXP args_, bo
     }
 
     if (fun == symbol::And && args.length() == 2) {
-        cs << BC::guardNamePrimitive(fun);
+        emitGuardForNamePrimitive(cs, fun);
 
         BC::Label nextBranch = cs.mkLabel();
 
@@ -409,7 +418,7 @@ bool compileSpecialCall(CompilerContext& ctx, SEXP ast, SEXP fun, SEXP args_, bo
     }
 
     if (fun == symbol::Or && args.length() == 2) {
-        cs << BC::guardNamePrimitive(fun);
+        emitGuardForNamePrimitive(cs, fun);
 
         BC::Label nextBranch = cs.mkLabel();
 
@@ -434,7 +443,7 @@ bool compileSpecialCall(CompilerContext& ctx, SEXP ast, SEXP fun, SEXP args_, bo
     }
 
     if (fun == symbol::quote && args.length() == 1) {
-        cs << BC::guardNamePrimitive(fun);
+        emitGuardForNamePrimitive(cs, fun);
         if (!voidContext)
             cs << BC::push(args[0]);
         return true;
@@ -470,17 +479,18 @@ bool compileSpecialCall(CompilerContext& ctx, SEXP ast, SEXP fun, SEXP args_, bo
         }
 
         // 2) Specialcalse normal assignment (ie. "i <- expr")
-        Match(lhs){
-            Case(SYMSXP){
-                cs << BC::guardNamePrimitive(fun);
+        Match(lhs) {
+            Case(SYMSXP) {
+                emitGuardForNamePrimitive(cs, fun);
                 compileExpr(ctx, rhs);
                 if (!voidContext) {
                     // No ensureNamed needed, stvar already ensures named
                     cs << BC::dup() << BC::invisible();
                 }
                 cs << (superAssign
-                        ? BC::stvarSuper(lhs)
-                        : BC::stvarCache(lhs, ctx.code.top()->cacheSlotFor(lhs)));
+                           ? BC::stvarSuper(lhs)
+                           : BC::stvarCached(
+                                 lhs, ctx.code.top()->cacheSlotFor(lhs)));
                 return true;
             }
             Else(break)
@@ -532,7 +542,7 @@ bool compileSpecialCall(CompilerContext& ctx, SEXP ast, SEXP fun, SEXP args_, bo
             return false;
         }
 
-        cs << BC::guardNamePrimitive(fun);
+        emitGuardForNamePrimitive(cs, fun);
 
         // First rhs (assign is right-associative)
         compileExpr(ctx, rhs);
@@ -555,8 +565,8 @@ bool compileSpecialCall(CompilerContext& ctx, SEXP ast, SEXP fun, SEXP args_, bo
         // not local to the current environment.
 
         cs << (superAssign ? BC::ldvarSuper(target)
-                        : BC::ldvarForUpdateCache(
-                                target, ctx.code.top()->cacheSlotFor(target)));
+                           : BC::ldvarForUpdateCached(
+                                 target, ctx.code.top()->cacheSlotFor(target)));
 
         if (Compiler::profile)
             cs << BC::recordType();
@@ -583,9 +593,9 @@ bool compileSpecialCall(CompilerContext& ctx, SEXP ast, SEXP fun, SEXP args_, bo
         cs.addSrc(ast);
 
         // store the result as "target"
-        cs << (superAssign
-                ? BC::stvarSuper(target)
-                : BC::stvarCache(target, ctx.code.top()->cacheSlotFor(target)));
+        cs << (superAssign ? BC::stvarSuper(target)
+                           : BC::stvarCached(
+                                 target, ctx.code.top()->cacheSlotFor(target)));
 
         if (!voidContext)
             cs << BC::invisible();
@@ -593,7 +603,7 @@ bool compileSpecialCall(CompilerContext& ctx, SEXP ast, SEXP fun, SEXP args_, bo
     }
 
     if (fun == symbol::Block) {
-        cs << BC::guardNamePrimitive(fun);
+        emitGuardForNamePrimitive(cs, fun);
 
         if (args.length() == 0) {
             if (!voidContext)
@@ -616,7 +626,7 @@ bool compileSpecialCall(CompilerContext& ctx, SEXP ast, SEXP fun, SEXP args_, bo
         if (args.length() < 2 || args.length() > 3)
             return false;
 
-        cs << BC::guardNamePrimitive(fun);
+        emitGuardForNamePrimitive(cs, fun);
         BC::Label trueBranch = cs.mkLabel();
         BC::Label nextBranch = cs.mkLabel();
 
@@ -644,7 +654,7 @@ bool compileSpecialCall(CompilerContext& ctx, SEXP ast, SEXP fun, SEXP args_, bo
         if (args.length() != 1 || args[0] == R_DotsSymbol)
             return false;
 
-        cs << BC::guardNamePrimitive(fun);
+        emitGuardForNamePrimitive(cs, fun);
         compileExpr(ctx, args[0]);
         if (!voidContext)
             cs << BC::visible();
@@ -655,7 +665,7 @@ bool compileSpecialCall(CompilerContext& ctx, SEXP ast, SEXP fun, SEXP args_, bo
     }
 
     if (fun == symbol::Return && args.length() < 2) {
-        cs << BC::guardNamePrimitive(fun);
+        emitGuardForNamePrimitive(cs, fun);
 
         if (args.length() == 0)
             cs << BC::push(R_NilValue);
@@ -667,7 +677,7 @@ bool compileSpecialCall(CompilerContext& ctx, SEXP ast, SEXP fun, SEXP args_, bo
     }
 
     if (fun == symbol::isnull && args.length() == 1) {
-        cs << BC::guardNamePrimitive(fun);
+        emitGuardForNamePrimitive(cs, fun);
         compileExpr(ctx, args[0]);
         if (voidContext)
             cs << BC::pop();
@@ -677,7 +687,7 @@ bool compileSpecialCall(CompilerContext& ctx, SEXP ast, SEXP fun, SEXP args_, bo
     }
 
     if (fun == symbol::islist && args.length() == 1) {
-        cs << BC::guardNamePrimitive(fun);
+        emitGuardForNamePrimitive(cs, fun);
         compileExpr(ctx, args[0]);
         if (voidContext)
             cs << BC::pop();
@@ -687,7 +697,7 @@ bool compileSpecialCall(CompilerContext& ctx, SEXP ast, SEXP fun, SEXP args_, bo
     }
 
     if (fun == symbol::ispairlist && args.length() == 1) {
-        cs << BC::guardNamePrimitive(fun);
+        emitGuardForNamePrimitive(cs, fun);
         compileExpr(ctx, args[0]);
         if (voidContext)
             cs << BC::pop();
@@ -709,7 +719,7 @@ bool compileSpecialCall(CompilerContext& ctx, SEXP ast, SEXP fun, SEXP args_, bo
         if (!isRegularArg(idx) || (is2d && !isRegularArg(idx2)))
             return false;
 
-        cs << BC::guardNamePrimitive(fun);
+        emitGuardForNamePrimitive(cs, fun);
         compileExpr(ctx, lhs);
 
         compileExpr(ctx, *idx);
@@ -738,7 +748,7 @@ bool compileSpecialCall(CompilerContext& ctx, SEXP ast, SEXP fun, SEXP args_, bo
 
     if (fun == symbol::Missing && args.length() == 1 && TYPEOF(args[0]) == SYMSXP &&
         !DDVAL(args[0])) {
-        cs << BC::guardNamePrimitive(fun);
+        emitGuardForNamePrimitive(cs, fun);
         if (!voidContext) {
             cs << BC::missing(args[0]) << BC::visible();
         }
@@ -751,7 +761,7 @@ bool compileSpecialCall(CompilerContext& ctx, SEXP ast, SEXP fun, SEXP args_, bo
         SEXP cond = args[0];
         SEXP body = args[1];
 
-        cs << BC::guardNamePrimitive(fun);
+        emitGuardForNamePrimitive(cs, fun);
 
         compileWhile(
             ctx,
@@ -772,7 +782,7 @@ bool compileSpecialCall(CompilerContext& ctx, SEXP ast, SEXP fun, SEXP args_, bo
 
         SEXP body = args[0];
 
-        cs << BC::guardNamePrimitive(fun);
+        emitGuardForNamePrimitive(cs, fun);
 
         BC::Label loopBranch = cs.mkLabel();
         BC::Label nextBranch = cs.mkLabel();
@@ -810,7 +820,7 @@ bool compileSpecialCall(CompilerContext& ctx, SEXP ast, SEXP fun, SEXP args_, bo
 
         assert(TYPEOF(sym) == SYMSXP);
 
-        cs << BC::guardNamePrimitive(fun);
+        emitGuardForNamePrimitive(cs, fun);
 
         if (compileSimpleFor(ctx, sym, seq, body, voidContext))
             return true;
@@ -841,7 +851,7 @@ bool compileSpecialCall(CompilerContext& ctx, SEXP ast, SEXP fun, SEXP args_, bo
         cs.addSrc(R_NilValue);
 
         // Set the loop variable
-        cs << BC::stvarCache(sym, ctx.code.top()->cacheSlotFor(sym));
+        cs << BC::stvarCached(sym, ctx.code.top()->cacheSlotFor(sym));
 
         compileExpr(ctx, body, true);
         cs << BC::br(loopBranch);
@@ -875,8 +885,9 @@ bool compileSpecialCall(CompilerContext& ctx, SEXP ast, SEXP fun, SEXP args_, bo
         }
 
         if (ctx.loopIsLocal()) {
-            cs << BC::guardNamePrimitive(fun) << BC::br(ctx.loopNext())
-            << BC::push(R_NilValue);
+            emitGuardForNamePrimitive(cs, fun);
+            cs << BC::br(ctx.loopNext())
+               << BC::push(R_NilValue);
             return true;
         }
     }
@@ -890,8 +901,9 @@ bool compileSpecialCall(CompilerContext& ctx, SEXP ast, SEXP fun, SEXP args_, bo
         }
 
         if (ctx.loopIsLocal()) {
-            cs << BC::guardNamePrimitive(fun) << BC::br(ctx.loopBreak())
-            << BC::push(R_NilValue);
+            emitGuardForNamePrimitive(cs, fun);
+            cs << BC::br(ctx.loopBreak())
+               << BC::push(R_NilValue);
             return true;
         }
     }
@@ -912,7 +924,7 @@ bool compileSpecialCall(CompilerContext& ctx, SEXP ast, SEXP fun, SEXP args_, bo
 
             // If the .Internal call goes to a builtin, then we call eagerly
             if (R_FunTab[i].eval % 10 == 1) {
-                cs << BC::guardNamePrimitive(symbol::Internal);
+                emitGuardForNamePrimitive(cs, symbol::Internal);
                 for (SEXP a : args)
                     compileExpr(ctx, a);
                 cs << BC::callBuiltin(args.length(), inAst, internal);
@@ -1053,7 +1065,7 @@ void compileGetvar(CompilerContext& ctx, SEXP name, bool needsVisible = true) {
     } else if (name == R_MissingArg) {
         cs << BC::push(R_MissingArg);
     } else {
-        cs << BC::ldvarCache(name, ctx.code.top()->cacheSlotFor(name));
+        cs << BC::ldvarCached(name, ctx.code.top()->cacheSlotFor(name));
         if (Compiler::profile)
             cs << BC::recordType();
     }
@@ -1149,6 +1161,10 @@ SEXP Compiler::finalize() {
 
     return function.function()->container();
 }
+
+bool Compiler::unsoundOpts =
+    !(getenv("UNSOUND_OPTS") &&
+      std::string(getenv("UNSOUND_OPTS")).compare("off") == 0);
 
 bool Compiler::profile =
     !(getenv("RIR_PROFILING") &&

@@ -347,12 +347,10 @@ struct PirType {
             return RType::nil;
         }
         if (isA(num() | RType::str | RType::cons | RType::code)) {
-            PirType t = *this;
             if (idx.isScalar())
-                t.setScalar();
+                return scalar();
             else
-                t = t.orNotScalar();
-            return t;
+                return orNotScalar();
         } else if (isA(RType::vec)) {
             return RType::vec;
         } else if (!maybeObj() && !PirType(RType::prom).isA(*this)) {
