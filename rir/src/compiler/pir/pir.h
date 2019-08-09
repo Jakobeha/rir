@@ -10,6 +10,7 @@ namespace pir {
 
 class Closure;
 class ClosureVersion;
+class ClosureProperties;
 class BB;
 class Promise;
 class Value;
@@ -17,7 +18,7 @@ class Code;
 class Env;
 class Instruction;
 class LazyEnv;
-
+class PirSignature;
 }
 }
 

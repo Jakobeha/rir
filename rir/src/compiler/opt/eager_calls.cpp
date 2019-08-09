@@ -181,8 +181,8 @@ void EagerCalls::apply(RirCompiler& cmp, ClosureVersion* closure,
                     continue;
                 }
 
-                bool allEager = version->properties.includes(
-                    ClosureVersion::Property::IsEager);
+                bool allEager =
+                    version->properties.includes(ClosureProperty::IsEager);
                 if (!allEager &&
                     version->properties.argumentForceOrder.empty()) {
                     ip = next;
@@ -290,7 +290,7 @@ void EagerCalls::apply(RirCompiler& cmp, ClosureVersion* closure,
             } else if (auto call = StaticCall::Cast(*ip)) {
                 auto version = call->tryDispatch();
                 if (version && version->properties.includes(
-                                   ClosureVersion::Property::NoReflection)) {
+                                   ClosureProperty::NoReflection)) {
                     call->eachCallArg([&](InstrArg& arg) {
                         if (auto mk = MkArg::Cast(arg.val())) {
                             if (mk->isEager()) {

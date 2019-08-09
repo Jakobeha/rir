@@ -8,10 +8,11 @@
 #include "api.h"
 
 #include "R/Serialize.h"
+#include "compiler/native/lower.h"
 #include "compiler/parameter.h"
+#include "compiler/pir/closure_property.h"
 #include "compiler/test/PirCheck.h"
 #include "compiler/test/PirTests.h"
-#include "compiler/native/lower.h"
 #include "compiler/translations/pir_2_rir/pir_2_rir.h"
 #include "compiler/translations/rir_2_pir/rir_2_pir.h"
 #include "compiler/translations/rir_2_pir/rir_2_pir_compiler.h"
@@ -396,6 +397,52 @@ REXPORT SEXP rir_deserialize(SEXP fileSexp) {
     fclose(file);
     pir::Parameter::RIR_PRESERVE = oldPreserve;
     return res;
+}
+
+static pir::PirSignature parsePirSignature(SEXP sigSexp) {
+    // TODO: Valid format checks
+    if (sigSexp == R_NilValue)
+        return pir::PirSignature::any();
+    if (TYPEOF(sigSexp) != STRSXP)
+        Rf_error("can't parse pir signature - must be a string");
+    return pir::PirSignature::parse(CHAR(Rf_asChar(sigSexp)));
+}
+
+REXPORT SEXP rir_properties(
+#define V(n) SEXP n##Sexp,
+    LIST_OF_CLOSURE_PROPERTIES(V)
+#undef V
+        SEXP forceOrderSexp,
+    SEXP sigSexp) {
+    pir::ClosureProperties opts;
+
+#define V(n)                                                                   \
+    if (Rf_asLogical(n##Sexp))                                                 \
+        opts.set(pir::ClosureProperty::n);
+    LIST_OF_CLOSURE_PROPERTIES(V)
+#undef V
+
+    RList forceOrder(forceOrderSexp);
+    for (SEXP idxSexp : forceOrder) {
+        if (TYPEOF(idxSexp) == INTSXP && LENGTH(idxSexp) == 1)
+            opts.argumentForceOrder.push_back(INTEGER(idxSexp)[0]);
+        else if (TYPEOF(idxSexp) == REALSXP && LENGTH(idxSexp) == 1)
+            opts.argumentForceOrder.push_back((int)REAL(idxSexp)[0]);
+        else
+            Rf_error("can't parse force order - indices must be scalar ints or "
+                     "reals");
+    }
+    opts.signature = parsePirSignature(sigSexp);
+    // TODO: Would expect opts.size() / sizeof(int), but this needs padding or
+    // opts.size() is wrong.
+    int optsSize = opts.size();
+    SEXP res = Rf_allocVector(RAWSXP, optsSize);
+    memcpy(DATAPTR(res), (void*)&opts, optsSize);
+    return res;
+}
+
+REXPORT SEXP rir_addProperties(SEXP closure, SEXP props) {
+    assert(false && "TODO implement");
 }
 
 REXPORT SEXP rirEnableLoopPeeling() {

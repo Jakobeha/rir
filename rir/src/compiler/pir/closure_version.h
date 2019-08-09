@@ -3,6 +3,7 @@
 
 #include "../../runtime/Function.h"
 #include "../debugging/debugging.h"
+#include "closure_property.h"
 #include "code.h"
 #include "optimization_context.h"
 #include "pir.h"
@@ -19,25 +20,6 @@ namespace pir {
  */
 class ClosureVersion : public Code {
   public:
-    enum class Property {
-        IsEager,
-        NoReflection,
-
-        FIRST = IsEager,
-        LAST = NoReflection
-
-    };
-
-    struct Properties : public EnumSet<Property> {
-        Properties() : EnumSet<Property>(){};
-        explicit Properties(const EnumSet<Property>& other)
-            : EnumSet<Property>(other) {}
-        explicit Properties(const Property& other) : EnumSet<Property>(other) {}
-
-        std::vector<size_t> argumentForceOrder;
-        friend std::ostream& operator<<(std::ostream& out, const Properties&);
-    };
-
     size_t inlinees = 0;
 
   private:
@@ -49,7 +31,7 @@ class ClosureVersion : public Code {
     std::string nameSuffix_;
     ClosureVersion(Closure* closure,
                    const OptimizationContext& optimizationContext,
-                   const Properties& properties = Properties());
+                   const ClosureProperties& properties = ClosureProperties());
 
     friend class Closure;
 
@@ -63,7 +45,7 @@ class ClosureVersion : public Code {
         return optimizationContext_;
     }
 
-    Properties properties;
+    ClosureProperties properties;
 
     Closure* owner() const { return owner_; }
     size_t nargs() const;
@@ -102,8 +84,6 @@ class ClosureVersion : public Code {
 
     ~ClosureVersion();
 };
-
-std::ostream& operator<<(std::ostream& out, const ClosureVersion::Property&);
 
 } // namespace pir
 } // namespace rir

@@ -117,7 +117,7 @@ size_t ClosureVersion::nargs() const { return owner_->nargs(); }
 
 ClosureVersion::ClosureVersion(Closure* closure,
                                const OptimizationContext& optimizationContext,
-                               const Properties& properties)
+                               const ClosureProperties& properties)
     : owner_(closure), optimizationContext_(optimizationContext),
       properties(properties) {
     auto id = std::stringstream();
@@ -126,39 +126,6 @@ ClosureVersion::ClosureVersion(Closure* closure,
     id.str("");
     id << this;
     nameSuffix_ = id.str();
-}
-
-std::ostream& operator<<(std::ostream& out, const ClosureVersion::Property& p) {
-    switch (p) {
-    case ClosureVersion::Property::IsEager:
-        out << "Eager";
-        break;
-    case ClosureVersion::Property::NoReflection:
-        out << "!Reflection";
-        break;
-    }
-    return out;
-}
-
-std::ostream& operator<<(std::ostream& out,
-                         const ClosureVersion::Properties& props) {
-    for (auto p = props.begin(); p != props.end(); ++p) {
-        out << *p;
-        if ((p + 1) != props.end())
-            out << ", ";
-    }
-    if (props.argumentForceOrder.size() > 0) {
-        if (!props.empty())
-            out << ", ";
-        out << "ForceOrd: ";
-        for (auto o = props.argumentForceOrder.begin();
-             o != props.argumentForceOrder.end(); ++o) {
-            out << *o;
-            if ((o + 1) != props.argumentForceOrder.end())
-                out << " ";
-        }
-    }
-    return out;
 }
 
 } // namespace pir

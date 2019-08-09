@@ -365,7 +365,7 @@ void ForceDominance::apply(RirCompiler&, ClosureVersion* cls,
 
             result = analysis.result();
             if (result.eagerLikeFunction(cls))
-                cls->properties.set(ClosureVersion::Property::IsEager);
+                cls->properties.set(ClosureProperty::IsEager);
             cls->properties.argumentForceOrder = result.argumentForceOrder;
 
             Visitor::run(code->entry, [&](BB* bb) {
