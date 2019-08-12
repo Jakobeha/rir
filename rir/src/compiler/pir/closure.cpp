@@ -68,7 +68,7 @@ Closure::declareVersion(const OptimizationContext& optimizationContext) {
     assert(!versions.count(optimizationContext));
     versions[optimizationContext] = nullptr;
     auto entry = versions.find(optimizationContext);
-    auto v = new ClosureVersion(this, entry->first);
+    auto v = new ClosureVersion(this, entry->first, function->augments);
     entry->second = v;
     return v;
 }

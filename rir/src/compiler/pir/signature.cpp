@@ -33,12 +33,22 @@ PirSignature PirSignature::parse(const std::string& inp) {
     return PirSignature(argTypes, retType);
 }
 
+PirSignature::PirSignature(std::vector<PirType> argsVec, PirType result)
+    : numArgs(argsVec.size()), result(result), form(Form::Regular) {
+    if (argsVec.size() >= PirSignature::MAX_NUM_ARGS) {
+        Rf_error("pir signatures can only take up to %d args", PirSignature::MAX_NUM_ARGS);
+    }
+    for (unsigned i = 0; i < argsVec.size(); i++) {
+        args[i] = argsVec[i];
+    }
+}
+
 bool PirSignature::accepts(std::vector<PirType> inArgs) const {
     switch (form) {
     case Form::Regular:
-        if (args.size() != inArgs.size())
+        if (numArgs != inArgs.size())
             return false;
-        for (int i = 0; i < args.size(); i++) {
+        for (int i = 0; i < numArgs; i++) {
             PirType arg = args[i];
             PirType inArg = inArgs[i];
             if (!inArg.isA(arg))
@@ -55,13 +65,18 @@ bool PirSignature::accepts(std::vector<PirType> inArgs) const {
     }
 }
 
-PirSignature PirSignature::operator&(PirSignature& other) {
+PirSignature PirSignature::operator|(const PirSignature& other) const {
     if (isAny() || other.isNothing())
         return other;
     else if (isNothing() || other.isAny())
-        return this;
-    else if (args.size() != other.args().size())
+        return *this;
+    else if (numArgs != other.numArgs)
         return PirSignature::nothing();
+    std::vector<PirType> resArgs;
+    for (int i = 0; i < numArgs; i++) {
+        resArgs.push_back(args[i] & other.args[i]);
+    }
+    return PirSignature(resArgs, result | other.result);
 }
 
 std::ostream& PirSignature::operator<<(std::ostream& out) {

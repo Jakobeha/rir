@@ -83,28 +83,28 @@ pir.check <- function(f, ..., warmup=NULL) {
     res
 }
 
-# creates a bitset which represents ClosureProperty in RIR
-rir.properties <- function(NoReflection=FALSE,
-                           type=NULL) {
+# creates a bitset which represents a ClosureAugment in RIR
+rir.mkAugments <- function(Strict=FALSE,
+                         NoReflection=FALSE,
+                         sig=NULL) {
     # !!!  This list of arguments *must* be exactly equal to the            !!!
-    # !!!  LIST_OF_CLOSURE_PROPERTIES in compiler/pir/closure_properties.h  !!!
+    # !!!  LIST_OF_CLOSURE_AUGMENTS in compiler/pir/closure_augments.h  !!!
     .Call(
-        "rir_properties",
-        FALSE, # IsEager
+        "rir_mkAugments",
+        Strict,
         NoReflection,
-        c(), # argForceOrder
-        type
+        sig
     )
 }
 
-# add closure properties - this will add an assertion and/or affect closure behavior
-rir.addProperties <- function(cls, props) {
-    .Call("rir_addProperties", cls, props)
+# set closure augments - takes the augment set directly
+rir.setAugments <- function(cls, props) {
+    .Call("rir_setAugments", cls, props)
 }
 
-# add closure properties - takes the property bitset directly
-rir.addProperty <- function(cls, ...) {
-    rir.addProperties(cls, rir.properties(...))
+# set closure augments - these affect closure behavior, adding assertions and optimizations
+rir.augment <- function(cls, ...) {
+    rir.setProperties(cls, rir.properties(...))
 }
 
 # creates a bitset with pir debug options

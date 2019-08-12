@@ -4,6 +4,7 @@
 #include "Function.h"
 #include "R/Serialize.h"
 #include "RirRuntimeObject.h"
+#include "compiler/pir/closure_augment.h"
 
 namespace rir {
 
@@ -19,6 +20,7 @@ typedef SEXP DispatchTableEntry;
 #pragma pack(1)
 struct DispatchTable
     : public RirRuntimeObject<DispatchTable, DISPATCH_TABLE_MAGIC> {
+    pir::ClosureAugments augments;
 
     size_t size() const { return size_; }
 
@@ -136,6 +138,7 @@ struct DispatchTable
             table->setEntry(i,
                             Function::deserialize(refTable, inp)->container());
         }
+        InBytes(inp, &fun->augments, sizeof(pir::PirSignature));
         UNPROTECT(1);
         return table;
     }
@@ -146,6 +149,7 @@ struct DispatchTable
         for (size_t i = 0; i < size(); i++) {
             get(i)->serialize(refTable, out);
         }
+        OutBytes(out, &augments, sizeof(pir::PirSignature));
     }
 
   private:

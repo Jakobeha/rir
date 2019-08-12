@@ -10,7 +10,7 @@
 #include "R/Serialize.h"
 #include "compiler/native/lower.h"
 #include "compiler/parameter.h"
-#include "compiler/pir/closure_property.h"
+#include "compiler/pir/closure_augment.h"
 #include "compiler/test/PirCheck.h"
 #include "compiler/test/PirTests.h"
 #include "compiler/translations/pir_2_rir/pir_2_rir.h"
@@ -57,7 +57,7 @@ REXPORT SEXP rir_disassemble(SEXP what, SEXP verbose) {
         Rf_error("Not a rir compiled code");
 
     std::cout << "* closure " << what << " (vtable " << t << ", env "
-              << CLOENV(what) << ")\n";
+              << CLOENV(what) << ")\n  augments: " << t->augments << "\n";
     for (size_t entry = 0; entry < t->size(); ++entry) {
         Function* f = t->get(entry);
         std::cout << "= vtable slot <" << entry << "> (" << f << ", invoked "
@@ -408,41 +408,32 @@ static pir::PirSignature parsePirSignature(SEXP sigSexp) {
     return pir::PirSignature::parse(CHAR(Rf_asChar(sigSexp)));
 }
 
-REXPORT SEXP rir_properties(
+REXPORT SEXP rir_mkAugments(
 #define V(n) SEXP n##Sexp,
-    LIST_OF_CLOSURE_PROPERTIES(V)
+    LIST_OF_CLOSURE_AUGMENTS(V)
 #undef V
-        SEXP forceOrderSexp,
     SEXP sigSexp) {
-    pir::ClosureProperties opts;
+    pir::ClosureAugments augments;
 
 #define V(n)                                                                   \
     if (Rf_asLogical(n##Sexp))                                                 \
-        opts.set(pir::ClosureProperty::n);
-    LIST_OF_CLOSURE_PROPERTIES(V)
+        augments.set(pir::ClosureAugment::n);
+    LIST_OF_CLOSURE_AUGMENTS(V)
 #undef V
 
-    RList forceOrder(forceOrderSexp);
-    for (SEXP idxSexp : forceOrder) {
-        if (TYPEOF(idxSexp) == INTSXP && LENGTH(idxSexp) == 1)
-            opts.argumentForceOrder.push_back(INTEGER(idxSexp)[0]);
-        else if (TYPEOF(idxSexp) == REALSXP && LENGTH(idxSexp) == 1)
-            opts.argumentForceOrder.push_back((int)REAL(idxSexp)[0]);
-        else
-            Rf_error("can't parse force order - indices must be scalar ints or "
-                     "reals");
-    }
-    opts.signature = parsePirSignature(sigSexp);
-    // TODO: Would expect opts.size() / sizeof(int), but this needs padding or
-    // opts.size() is wrong.
-    int optsSize = opts.size();
-    SEXP res = Rf_allocVector(RAWSXP, optsSize);
-    memcpy(DATAPTR(res), (void*)&opts, optsSize);
+    augments.signature = parsePirSignature(sigSexp);
+    SEXP res = Rf_allocVector(RAWSXP, sizeof(pir::ClosureAugments));
+    memcpy(DATAPTR(res), (void*)&augments, sizeof(pir::ClosureAugments));
     return res;
 }
 
-REXPORT SEXP rir_addProperties(SEXP closure, SEXP props) {
-    assert(false && "TODO implement");
+REXPORT SEXP rir_setAugments(SEXP cls, SEXP augments) {
+    if (!isValidClosureSEXP(cls) || !DispatchTable::check(BODY(cls)))
+        Rf_error("first argument must be a RIR compiled closure");
+    if (TYPEOF(augments) != RAWSXP || Rf_length(augments) != sizeof(pir::ClosureAugments))
+        Rf_error("second argument must be created by rir.mkAugments");
+    auto body = DispatchTable::check(BODY(cls));
+    memcpy(&body->augments, DATAPTR(augments), sizeof(pir::ClosureAugments));
 }
 
 REXPORT SEXP rirEnableLoopPeeling() {
