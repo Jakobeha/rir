@@ -5,6 +5,7 @@
 #include <cstdint>
 
 #define RIR_INLINE inline
+#define HIDDEN __attribute__((hidden))
 
 extern void printCBacktrace();
 extern void printRBacktrace();

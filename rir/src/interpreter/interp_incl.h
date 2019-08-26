@@ -26,11 +26,13 @@ void initializeRuntime();
 InterpreterInstance* globalContext();
 Configurations* pirConfigurations();
 
-SEXP evalRirCodeExtCaller(Code* c, InterpreterInstance* ctx, SEXP env);
+SEXP evalRirCodeExtCaller(Code* c, InterpreterInstance* ctx, SEXP env,
+                          bool trackingEnvs = false);
 SEXP evalRirCode(Code* c, InterpreterInstance* ctx, SEXP env,
                  const CallContext* callContext);
 
 SEXP rirEval_f(SEXP f, SEXP env);
+SEXP rirEval(SEXP f, SEXP env, bool trackingEnvs);
 SEXP rirApplyClosure(SEXP, SEXP, SEXP, SEXP, SEXP);
 
 SEXP argsLazyCreation(void* rirDataWrapper);

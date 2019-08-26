@@ -3,6 +3,7 @@
 #include "R/Sexp.h"
 #include "R/Symbols.h"
 #include "R/r.h"
+#include "track_envs.h"
 
 #include <assert.h>
 
@@ -82,7 +83,7 @@ static SEXP promiseEval(SEXP e, SEXP env, InterpreterInstance* ctx) {
     SEXP res = NULL;
     switch (TYPEOF(e)) {
     case EXTERNALSXP:
-        res = rirEval_f(e, env);
+        res = rirEval(e, env, true);
         break;
     default:
         // Fallback to GNU-R
@@ -122,8 +123,10 @@ SEXP rirForcePromise(SEXP e, InterpreterInstance* ctx) {
     prstack.next = R_PendingPromises;
     R_PendingPromises = &prstack;
 
+    EnvTracker::current()->pushPromiseEnv(PRENV(e));
     // The original code is eval(PRCODE(e), PRENV(e))
     val = promiseEval(PRCODE(e), PRENV(e), ctx);
+    EnvTracker::current()->popPromiseEnv(PRENV(e));
 
     /* Pop the stack, unmark the promise and set its value field.
        Also set the environment to R_NilValue to allow GC to

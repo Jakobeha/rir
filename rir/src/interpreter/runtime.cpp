@@ -1,5 +1,6 @@
 #include "api.h"
 #include "interp.h"
+#include "track_envs.h"
 
 #include <iomanip>
 
@@ -37,7 +38,8 @@ void initializeRuntime() {
     globalContext_ = context_create();
     registerExternalCode(rirEval_f, rirApplyClosure, rir_compile, rirDecompile,
                          deserializeRir, serializeRir, materialize,
-                         keepAliveSEXPs);
+                         keepAliveSEXPs, EnvTracker::createEnvTracker,
+                         EnvTracker::destroyEnvTracker);
 }
 
 InterpreterInstance* globalContext() { return globalContext_; }

@@ -11,6 +11,7 @@
 #include "ir/Deoptimization.h"
 #include "runtime/TypeFeedback_inl.h"
 #include "safe_force.h"
+#include "track_envs.h"
 #include "utils/Pool.h"
 
 #include <assert.h>
@@ -448,15 +449,22 @@ static RIR_INLINE SEXP legacySpecialCall(CallContext& call,
     int flag = getFlag(call.callee);
     R_Visible = static_cast<Rboolean>(flag != 1);
     // call it with the AST only
-    SEXP result = f(call.ast, call.callee, CDR(call.ast),
-                    materializeCallerEnv(call, ctx));
+    SEXP env = materializeCallerEnv(call, ctx);
+    EnvTracker::current()->pushCallEnv(env);
+    SEXP result = f(call.ast, call.callee, CDR(call.ast), env);
     if (flag < 2)
         R_Visible = static_cast<Rboolean>(flag != 1);
+
+    EnvTracker::current()->popCallEnv(env, call.callerEnv);
     return result;
 }
 
 static RIR_INLINE SEXP legacyCallWithArgslist(CallContext& call, SEXP argslist,
                                               InterpreterInstance* ctx) {
+    SEXP env = materializeCallerEnv(call, ctx);
+    EnvTracker::current()->pushCallEnv(env);
+
+    SEXP result;
     if (TYPEOF(call.callee) == BUILTINSXP) {
         // get the ccode
         CCODE f = getBuiltin(call.callee);
@@ -464,17 +472,18 @@ static RIR_INLINE SEXP legacyCallWithArgslist(CallContext& call, SEXP argslist,
         if (flag < 2)
             R_Visible = static_cast<Rboolean>(flag != 1);
         // call it
-        SEXP result =
-            f(call.ast, call.callee, argslist, materializeCallerEnv(call, ctx));
+        result = f(call.ast, call.callee, argslist, env);
         if (flag < 2)
             R_Visible = static_cast<Rboolean>(flag != 1);
-        return result;
+    } else {
+        assert(TYPEOF(call.callee) == CLOSXP &&
+               TYPEOF(BODY(call.callee)) != EXTERNALSXP);
+        result =
+            Rf_applyClosure(call.ast, call.callee, argslist, env, R_NilValue);
     }
 
-    assert(TYPEOF(call.callee) == CLOSXP &&
-           TYPEOF(BODY(call.callee)) != EXTERNALSXP);
-    return Rf_applyClosure(call.ast, call.callee, argslist,
-                           materializeCallerEnv(call, ctx), R_NilValue);
+    EnvTracker::current()->popCallEnv(env, call.callerEnv);
+    return result;
 }
 
 static RIR_INLINE SEXP legacyCall(CallContext& call, InterpreterInstance* ctx) {
@@ -752,7 +761,9 @@ RIR_INLINE SEXP rirCall(CallContext& call, InterpreterInstance* ctx) {
         PROTECT(arglist);
         SEXP env = closureArgumentAdaptor(call, arglist, R_NilValue);
         PROTECT(env);
+        EnvTracker::current()->pushCallEnv(env);
         result = rirCallTrampoline(call, fun, env, arglist, ctx);
+        EnvTracker::current()->popCallEnv(env, call.callerEnv);
         UNPROTECT(2);
     } else {
             // Instead of a SEXP with the argslist we create an
@@ -857,7 +868,8 @@ SEXP doCall(CallContext& call, InterpreterInstance* ctx) {
     case CLOSXP: {
         if (TYPEOF(BODY(call.callee)) != EXTERNALSXP)
             return legacyCall(call, ctx);
-        return rirCall(call, ctx);
+        else
+            return rirCall(call, ctx);
     }
     default:
         Rf_error("Invalid Callee");
@@ -3810,8 +3822,14 @@ eval_done:
 
 #pragma GCC diagnostic pop
 
-SEXP evalRirCodeExtCaller(Code* c, InterpreterInstance* ctx, SEXP env) {
-    return evalRirCode(c, ctx, env, nullptr);
+SEXP evalRirCodeExtCaller(Code* c, InterpreterInstance* ctx, SEXP env,
+                          bool trackingEnvs) {
+    if (!trackingEnvs)
+        EnvTracker::current()->start(env);
+    SEXP res = evalRirCode(c, ctx, env, nullptr);
+    if (!trackingEnvs)
+        EnvTracker::current()->stop(env);
+    return res;
 }
 
 SEXP evalRirCode(Code* c, InterpreterInstance* ctx, SEXP env,
@@ -3821,6 +3839,7 @@ SEXP evalRirCode(Code* c, InterpreterInstance* ctx, SEXP env,
 
 SEXP rirApplyClosure(SEXP ast, SEXP op, SEXP arglist, SEXP rho,
                      SEXP suppliedvars) {
+    EnvTracker::current()->start(rho);
     auto ctx = globalContext();
 
     RList args(arglist);
@@ -3861,16 +3880,19 @@ SEXP rirApplyClosure(SEXP ast, SEXP op, SEXP arglist, SEXP rho,
 
     auto res = rirCall(call, ctx);
     ostack_popn(ctx, call.passedArgs);
+    EnvTracker::current()->stop(rho);
     return res;
 }
 
-SEXP rirEval_f(SEXP what, SEXP env) {
+SEXP rirEval_f(SEXP what, SEXP env) { return rirEval(what, env, false); }
+
+SEXP rirEval(SEXP what, SEXP env, bool trackingEnvs) {
     assert(TYPEOF(what) == EXTERNALSXP);
 
     // TODO: do we not need an RCNTXT here?
 
     if (auto code = Code::check(what)) {
-        return evalRirCodeExtCaller(code, globalContext(), env);
+        return evalRirCodeExtCaller(code, globalContext(), env, trackingEnvs);
     }
 
     if (auto table = DispatchTable::check(what)) {
@@ -3879,7 +3901,8 @@ SEXP rirEval_f(SEXP what, SEXP env) {
         Function* fun = table->baseline();
         fun->registerInvocation();
 
-        return evalRirCodeExtCaller(fun->body(), globalContext(), env);
+        return evalRirCodeExtCaller(fun->body(), globalContext(), env,
+                                    trackingEnvs);
     }
 
     if (auto fun = Function::check(what)) {
