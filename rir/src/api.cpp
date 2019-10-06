@@ -407,6 +407,10 @@ REXPORT SEXP rirDisableLoopPeeling() {
     return R_NilValue;
 }
 
+REXPORT SEXP rirEnableFreeze() { return R_NilValue; }
+
+REXPORT SEXP rirDisableFreeze() { return R_NilValue; }
+
 bool startup() {
     initializeRuntime();
     return true;

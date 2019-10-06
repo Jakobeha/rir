@@ -36,7 +36,7 @@ void initializeRuntime() {
     // initialize the global context
     globalContext_ = context_create();
     registerExternalCode(rirEval_f, rirApplyClosure, rir_compile, rirDecompile,
-                         deserializeRir, serializeRir, materialize);
+                         deserializeRir, serializeRir, materialize, NULL);
 }
 
 InterpreterInstance* globalContext() { return globalContext_; }
